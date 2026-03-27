@@ -18,12 +18,12 @@ public class MainMenu : MonoBehaviour
 
     public void OnClickPlay()
     {
-        Debug.Log("Play");
+        Debug.Log("It`s Play");
     }
 
     public void OnClickSettings()
         {
-            Debug.Log("Settings");
+            Debug.Log("it`s Settings");
     }
     
         public void OnClickQuit()
