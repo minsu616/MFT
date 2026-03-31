@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class ShipPlacer : MonoBehaviour
 {
+    //배치 타일 좌표 저장할 자료구조
+    private HashSet<Vector2Int> occupiedTiles = new HashSet<Vector2Int>();
+
     [Header("배치할 함선 목록")]
     public ShipController.ShipType[] shipTypes = new ShipController.ShipType[]
     {
@@ -24,6 +27,7 @@ public class ShipPlacer : MonoBehaviour
     private bool isHorizontal = true;      // 가로/세로 방향
     private List<GameObject> placedShips = new List<GameObject>(); // 배치된 함선들
     private GameObject previewShip;        // 미리보기 함선
+
 
     // 함선 크기 매핑
     private Dictionary<ShipController.ShipType, int> shipSizes
@@ -112,6 +116,12 @@ public class ShipPlacer : MonoBehaviour
             return;
         }
 
+        if (IsOverlapping(coord, size))
+        {
+            Debug.Log("배치 불가! 다른 배와 겹칩니다.");
+            return;
+        }
+
         // 함선 생성
         GameObject ship = CreateShipObject(size, shipColor,
             shipTypes[currentShipIndex].ToString());
@@ -122,7 +132,20 @@ public class ShipPlacer : MonoBehaviour
         ShipController sc = ship.AddComponent<ShipController>();
         sc.shipType = shipTypes[currentShipIndex];
 
+        //배치
         placedShips.Add(ship);
+        //배치 성공하면 좌표 등록
+        for (int i = 0; i < size; i++)
+        {
+            Vector2Int pos;
+
+            if (isHorizontal)
+                pos = new Vector2Int(coord.x + i, coord.y);
+            else
+                pos = new Vector2Int(coord.x, coord.y + i);
+
+            occupiedTiles.Add(pos);
+        }
 
         Debug.Log($"{shipTypes[currentShipIndex]} 배치완료! 좌표: ({coord.x}, {coord.y})");
 
@@ -149,6 +172,25 @@ public class ShipPlacer : MonoBehaviour
             return coord.x + size <= 30;
         else
             return coord.y + size <= 30;
+    }
+
+    //배 배치전 겹침검사
+    bool IsOverlapping(Vector2Int coord, int size)
+    {
+        for (int i = 0; i < size; i++)
+        {
+            Vector2Int checkPos;
+
+            if (isHorizontal)
+                checkPos = new Vector2Int(coord.x + i, coord.y);
+            else
+                checkPos = new Vector2Int(coord.x, coord.y + i);
+
+            if (occupiedTiles.Contains(checkPos))
+                return true;
+        }
+
+        return false;
     }
 
     // 함선 위치 계산
