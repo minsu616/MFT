@@ -113,12 +113,14 @@ public class ShipPlacer : MonoBehaviour
         if (!IsValidPlacement(coord, size))
         {
             Debug.Log("배치 불가! 맵 범위를 벗어났습니다.");
+            ErrorPopupManager.ShowError();
             return;
         }
 
         if (IsOverlapping(coord, size))
         {
             Debug.Log("배치 불가! 다른 배와 겹칩니다.");
+            ErrorPopupManager.ShowError();
             return;
         }
 
