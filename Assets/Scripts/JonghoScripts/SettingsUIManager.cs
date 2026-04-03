@@ -54,6 +54,12 @@ public class SettingsUIManager : MonoBehaviour
         }
     }
 
+    // 버튼 클릭 시 호출할 함수 (반드시 public이어야 인스펙터에 보입니다) setting을 누르면 켜지기
+    public void OnSettingsButtonClick()
+    {
+        ToggleSettingsUI();
+    }
+
     /// <summary>
     /// [기능] 버튼 클릭 및 슬라이더 값 변경 시 실행될 함수들을 연결(Listening)해주는 기능입니다.
     /// </summary>
