@@ -28,7 +28,7 @@ public class ErrorPopupManager : MonoBehaviour
     private IEnumerator ShowAndHideRoutine()
     {
         errorImage.SetActive(true);            // 이미지 켜기
-        yield return new WaitForSeconds(2.0f); // 2초 대기 (원하는 시간으로 수정 가능)
+        yield return new WaitForSeconds(1.0f); // 1초 대기 (원하는 시간으로 수정 가능)
         errorImage.SetActive(false);           // 이미지 끄기
     }
 }

@@ -1,9 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.UI;
 public class ShipPlacer : MonoBehaviour
 {
+    [Header("UI")] //Complete Button 만듬
+    public GameObject completeButton;
+
     //배치 타일 좌표 저장할 자료구조
     private HashSet<Vector2Int> occupiedTiles = new HashSet<Vector2Int>();
 
@@ -117,6 +120,7 @@ public class ShipPlacer : MonoBehaviour
             return;
         }
 
+
         if (IsOverlapping(coord, size))
         {
             Debug.Log("배치 불가! 다른 배와 겹칩니다.");
@@ -149,6 +153,9 @@ public class ShipPlacer : MonoBehaviour
             occupiedTiles.Add(pos);
         }
 
+        //  GameData에 저장 추가!
+        GameData.Instance.AddShip(shipTypes[currentShipIndex], coord, isHorizontal);
+
         Debug.Log($"{shipTypes[currentShipIndex]} 배치완료! 좌표: ({coord.x}, {coord.y})");
 
         // 다음 함선으로
@@ -159,12 +166,21 @@ public class ShipPlacer : MonoBehaviour
             Debug.Log("모든 함선 배치 완료!");
             if (previewShip != null) Destroy(previewShip);
             // TODO: 배치 완료 버튼 활성화
+            ShowCompleteButton();
         }
         else
         {
             CreatePreview();
             Debug.Log($"다음 배치할 함선: {shipTypes[currentShipIndex]}");
         }
+    }
+
+    // 배치 완료 버튼 활성화
+    void ShowCompleteButton()
+    {
+        if (completeButton != null)
+            completeButton.SetActive(true); // 버튼 활성화
+        Debug.Log("배치 완료 버튼 활성화!");
     }
 
     // 맵 범위 체크
