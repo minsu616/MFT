@@ -57,8 +57,12 @@ public class TurnManager : MonoBehaviour
     {
         currentPhase = Phase.Move;
         Debug.Log($"[턴 {turnCount}] 이동 단계 시작!");
-        // 나중에 실제 이동 애니메이션 끝나면 자동으로 수행단계로 넘어갈 예정
-        // 지금은 바로 수행단계로
+
+        // 실제 이동 실행!
+        ShipSelector shipSelector = FindObjectOfType<ShipSelector>();
+        shipSelector.ExecuteMoveCommands();
+
+        // 이동 완료 후 수행 단계로
         StartExecutePhase();
     }
 
