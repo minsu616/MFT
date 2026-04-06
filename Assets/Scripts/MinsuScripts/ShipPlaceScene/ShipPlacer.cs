@@ -96,11 +96,16 @@ public class ShipPlacer : MonoBehaviour
         if (coord.x == -1) return;
 
         int size = shipSizes[shipTypes[currentShipIndex]];
-        Vector3 pos = GetShipPosition(coord, size);
-        Vector3 scale = GetShipScale(size);
 
-        previewShip.transform.position = pos;
-        previewShip.transform.localScale = scale;
+        // 자식 셀 위치 업데이트
+        for (int i = 0; i < previewShip.transform.childCount; i++)
+        {
+            Transform cell = previewShip.transform.GetChild(i);
+            if (isHorizontal)
+                cell.position = new Vector3(coord.x + i, 0.3f, coord.y);
+            else
+                cell.position = new Vector3(coord.x, 0.3f, coord.y + i);
+        }
     }
 
     // 함선 배치 시도
@@ -129,10 +134,20 @@ public class ShipPlacer : MonoBehaviour
         }
 
         // 함선 생성
-        GameObject ship = CreateShipObject(size, shipColor,
-            shipTypes[currentShipIndex].ToString());
-        ship.transform.position = GetShipPosition(coord, size);
-        ship.transform.localScale = GetShipScale(size);
+        GameObject ship = CreateShipObject(size, shipColor,shipTypes[currentShipIndex].ToString());
+
+        // 부모 위치 지정
+        ship.transform.position = new Vector3(coord.x, 0.3f, coord.y);
+
+        // 자식 셀 위치 지정
+        for (int i = 0; i < ship.transform.childCount; i++)
+        {
+            Transform cell = ship.transform.GetChild(i);
+            if (isHorizontal)
+                cell.position = new Vector3(coord.x + i, 0.3f, coord.y);
+            else
+                cell.position = new Vector3(coord.x, 0.3f, coord.y + i);
+        }
 
         // ShipController 붙이기
         ShipController sc = ship.AddComponent<ShipController>();
@@ -232,10 +247,19 @@ public class ShipPlacer : MonoBehaviour
     // 박스 오브젝트 생성
     GameObject CreateShipObject(int size, Color color, string shipName)
     {
-        GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        obj.name = shipName;
-        obj.GetComponent<Renderer>().material.color = color;
-        return obj;
+        GameObject shipParent = new GameObject(shipName);
+
+        for (int i = 0; i < size; i++)
+        {
+            GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cell.name = shipName + $"_cell{i}";
+            cell.GetComponent<Renderer>().material.color = color;
+            cell.transform.parent = shipParent.transform;
+            cell.transform.localScale = new Vector3(0.9f, 0.3f, 0.9f);
+        }
+
+        return shipParent;
     }
 }
+
 

@@ -34,6 +34,16 @@ public class BattleSetup : MonoBehaviour
         SpawnEnemyFleet();
     }
 
+    void Update()
+    {
+        // T키 누르면 적 함선 보이기/숨기기
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            ToggleEnemyVisibility();
+            Debug.Log("적 함선 토글!");
+        }
+    }
+
     // 내 함선 생성
     void SpawnMyFleet()
     {
@@ -48,28 +58,28 @@ public class BattleSetup : MonoBehaviour
     // 상대 함선 생성 (나중에 Photon으로 받아올 예정, 지금은 테스트용 임시 배치)
     void SpawnEnemyFleet()
     {
-        // 테스트용 임시 배치 (상대방 배치 데이터가 없으니 맵 반대편에 고정 배치)
         int[] sizes = { 5, 5, 4, 3, 3, 2 };
         ShipController.ShipType[] types = {
-            ShipController.ShipType.Battleship,
-            ShipController.ShipType.Carrier,
-            ShipController.ShipType.Cruiser,
-            ShipController.ShipType.Destroyer,
-            ShipController.ShipType.Submarine,
-            ShipController.ShipType.SpeedBoat
-        };
+        ShipController.ShipType.Battleship,
+        ShipController.ShipType.Carrier,
+        ShipController.ShipType.Cruiser,
+        ShipController.ShipType.Destroyer,
+        ShipController.ShipType.Submarine,
+        ShipController.ShipType.SpeedBoat
+    };
 
         for (int i = 0; i < types.Length; i++)
         {
             ShipInfo info = new ShipInfo();
             info.shipType = types[i];
-            info.coordinate = new Vector2Int(20, i * 4); // 맵 반대편 고정 배치
+            info.coordinate = new Vector2Int(20, i * 4);
             info.isHorizontal = true;
 
             GameObject ship = CreateShip(info, enemyShipColor, "Enemy_" + types[i].ToString());
 
-            // 상대 배 안보이게
-            ship.GetComponent<Renderer>().enabled = false;
+            // 부모 대신 자식 셀들 Renderer 끄기
+            foreach (Transform cell in ship.transform)
+                cell.GetComponent<Renderer>().enabled = false;
 
             enemyShips.Add(ship);
         }
@@ -81,32 +91,46 @@ public class BattleSetup : MonoBehaviour
     {
         int size = shipSizes[info.shipType];
 
-        GameObject ship = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        ship.name = shipName;
-        ship.GetComponent<Renderer>().material.color = color;
+        // 부모 오브젝트
+        GameObject shipParent = new GameObject(shipName);
+        shipParent.transform.position = new Vector3(info.coordinate.x, 0.3f, info.coordinate.y);
 
-        // 위치
-        if (info.isHorizontal)
+        // 칸마다 박스 생성
+        for (int i = 0; i < size; i++)
         {
-            ship.transform.position = new Vector3(
-                info.coordinate.x + (size - 1) * 0.5f, 0.3f, info.coordinate.y);
-            ship.transform.localScale = new Vector3(size, 0.3f, 0.8f);
-        }
-        else
-        {
-            ship.transform.position = new Vector3(
-                info.coordinate.x, 0.3f, info.coordinate.y + (size - 1) * 0.5f);
-            ship.transform.localScale = new Vector3(0.8f, 0.3f, size);
+            GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cell.name = shipName + $"_cell{i}";
+            cell.GetComponent<Renderer>().material.color = color;
+            cell.transform.parent = shipParent.transform;
+            cell.transform.localScale = new Vector3(0.9f, 0.3f, 0.9f);
+
+            if (info.isHorizontal)
+                cell.transform.position = new Vector3(info.coordinate.x + i, 0.3f, info.coordinate.y);
+            else
+                cell.transform.position = new Vector3(info.coordinate.x, 0.3f, info.coordinate.y + i);
         }
 
-        // ShipController 붙이기
-        ShipController sc = ship.AddComponent<ShipController>();
+        ShipController sc = shipParent.AddComponent<ShipController>();
         sc.shipType = info.shipType;
 
-        return ship;
+        return shipParent;
     }
 
     // 외부에서 함선 목록 가져올 때
     public List<GameObject> GetMyShips() => myShips;
     public List<GameObject> GetEnemyShips() => enemyShips;
+
+    // 적 함선 보이기/숨기기 토글 (테스트용)
+    public void ToggleEnemyVisibility()
+    {
+        foreach (GameObject ship in enemyShips)
+        {
+            foreach (Transform cell in ship.transform)
+            {
+                Renderer rend = cell.GetComponent<Renderer>();
+                rend.enabled = !rend.enabled; // 켜져있으면 끄고, 꺼져있으면 켜고
+            }
+        }
+    }
+
 }

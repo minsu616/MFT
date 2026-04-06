@@ -17,7 +17,7 @@ public class ShipSelector : MonoBehaviour
     public enum ActionMode { None, Move, Attack }
     public ActionMode currentAction = ActionMode.None;
 
-    // ✅ 명령 저장 목록
+    // 명령 저장 목록
     private List<ShipCommand> commandList = new List<ShipCommand>();
 
     void Start()
@@ -44,10 +44,18 @@ public class ShipSelector : MonoBehaviour
         {
             GameObject target = hit.collider.gameObject;
 
+            // 자식 셀 클릭시 부모로 올라가기
+            if (target.name.Contains("_cell"))
+            {
+                target = target.transform.parent.gameObject;
+            }
+
+            // 내 함선 클릭
             if (target.name.StartsWith("My_"))
             {
                 SelectShip(target);
             }
+            // 타일 클릭
             else if (target.name.Contains("Tile") && selectedShip != null)
             {
                 HandleTileClick(target);
@@ -59,15 +67,23 @@ public class ShipSelector : MonoBehaviour
     {
         if (selectedShip != null)
         {
-            // 명령받은 배면 주황색 유지, 아니면 원래색으로
             if (!HasCommand(selectedShip))
-                selectedShip.GetComponent<Renderer>().material.color = originalShipColor;
+            {
+                // 자식 셀들 색상 복구
+                foreach (Transform cell in selectedShip.transform)
+                    cell.GetComponent<Renderer>().material.color = originalShipColor;
+            }
             ClearHighlights();
         }
 
         selectedShip = ship;
-        originalShipColor = ship.GetComponent<Renderer>().material.color;
-        ship.GetComponent<Renderer>().material.color = selectedColor;
+
+        // 자식 첫번째 셀에서 원래 색상 가져오기
+        originalShipColor = ship.transform.GetChild(0).GetComponent<Renderer>().material.color;
+
+        // 자식 셀들 전체 노란색으로
+        foreach (Transform cell in ship.transform)
+            cell.GetComponent<Renderer>().material.color = selectedColor;
 
         ShipController sc = ship.GetComponent<ShipController>();
         Debug.Log($"{sc.GetData().ShipName} 선택!");
@@ -123,16 +139,15 @@ public class ShipSelector : MonoBehaviour
             return;
         }
 
-        // ✅ 실제 이동 대신 명령 저장!
+        //  실제 이동 대신 명령 저장!
         SaveMoveCommand(selectedShip, new Vector2Int(x, z));
     }
 
-    // ✅ 이동 명령 저장
+    //  이동 명령 저장
     void SaveMoveCommand(GameObject ship, Vector2Int targetCoord)
     {
         ShipController sc = ship.GetComponent<ShipController>();
 
-        // 기존 명령 있으면 덮어쓰기
         ShipCommand existing = commandList.Find(c => c.ship == ship);
         if (existing != null)
         {
@@ -145,21 +160,28 @@ public class ShipSelector : MonoBehaviour
             cmd.ship = ship;
             cmd.moveTarget = targetCoord;
             cmd.hasMoveCommand = true;
+
+            // 가로/세로 판별 (자식이 1개 이상일 때)
+            if (ship.transform.childCount >= 2)
+                cmd.isHorizontal = ship.transform.GetChild(1).position.x
+                    > ship.transform.GetChild(0).position.x;
+            else
+                cmd.isHorizontal = true;
+
             commandList.Add(cmd);
         }
 
-        // AP 소모
         turnManager.UseAP(APManager.MOVE_COST);
 
-        // 배 주황색으로 (명령받은 표시)
-        ship.GetComponent<Renderer>().material.color = commandedColor;
+        // 자식 셀 전체 주황색으로
+        foreach (Transform cell in ship.transform)
+            cell.GetComponent<Renderer>().material.color = commandedColor;
 
         Debug.Log($"{sc.GetData().ShipName} 이동 명령 저장! → ({targetCoord.x}, {targetCoord.y}) 남은 AP: {turnManager.GetCurrentAP()}");
-
         ClearHighlights();
     }
 
-    // ✅ 이동 단계에서 TurnManager가 호출 - 실제 이동 실행
+    // 이동 단계에서 TurnManager가 호출 - 실제 이동 실행
     public void ExecuteMoveCommands()
     {
         foreach (ShipCommand cmd in commandList)
@@ -169,19 +191,27 @@ public class ShipSelector : MonoBehaviour
                 ShipController sc = cmd.ship.GetComponent<ShipController>();
                 int size = sc.GetData().Size;
 
+                // 부모 위치 이동
                 cmd.ship.transform.position = new Vector3(
-                    cmd.moveTarget.x + (size - 1) * 0.5f,
-                    0.3f,
-                    cmd.moveTarget.y);
+                    cmd.moveTarget.x, 0.3f, cmd.moveTarget.y);
+
+                // 자식 셀 위치 재정렬
+                for (int i = 0; i < cmd.ship.transform.childCount; i++)
+                {
+                    Transform cell = cmd.ship.transform.GetChild(i);
+                    if (cmd.isHorizontal)
+                        cell.position = new Vector3(cmd.moveTarget.x + i, 0.3f, cmd.moveTarget.y);
+                    else
+                        cell.position = new Vector3(cmd.moveTarget.x, 0.3f, cmd.moveTarget.y + i);
+                }
+
+                // 자식 셀 초록색으로 복구
+                foreach (Transform cell in cmd.ship.transform)
+                    cell.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 0.2f);
 
                 Debug.Log($"{sc.GetData().ShipName} 이동 실행! → ({cmd.moveTarget.x}, {cmd.moveTarget.y})");
-
-                // 색상 원래대로
-                cmd.ship.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 0.2f);
             }
         }
-
-        // 명령 초기화
         commandList.Clear();
     }
 
@@ -206,12 +236,8 @@ public class ShipSelector : MonoBehaviour
 
     Vector2Int GetShipCoord(GameObject ship)
     {
-        ShipController sc = ship.GetComponent<ShipController>();
-        int size = sc.GetData().Size;
-
-        int x = Mathf.RoundToInt(ship.transform.position.x - (size - 1) * 0.5f);
+        int x = Mathf.RoundToInt(ship.transform.position.x);
         int z = Mathf.RoundToInt(ship.transform.position.z);
-
         return new Vector2Int(x, z);
     }
 

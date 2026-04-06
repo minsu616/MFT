@@ -10,4 +10,5 @@ public class ShipCommand
     public bool hasMoveCommand;       // 이동 명령 있는지
     public Vector2Int attackTarget;   // 공격할 좌표
     public bool hasAttackCommand;     // 공격 명령 있는지
+    public bool isHorizontal;
 }
