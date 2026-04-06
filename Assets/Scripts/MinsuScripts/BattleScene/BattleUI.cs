@@ -38,22 +38,22 @@ public class BattleUI : MonoBehaviour
 
         // 턴 표시
         turnText.text = turnManager.currentTurn == TurnManager.Turn.Player1
-            ? "Player 1 Turn"
-            : "Player 2 Turn";
+            ? "플레이어 1 턴"
+            : "플레이어 2 턴";
 
         // 단계 표시
         switch (turnManager.currentPhase)
         {
             case TurnManager.Phase.Command:
-                phaseText.text = "Command Step";
+                phaseText.text = "명령";
                 commandCompleteButton.interactable = true;
                 break;
             case TurnManager.Phase.Move:
-                phaseText.text = "Movent Step";
+                phaseText.text = "이동";
                 commandCompleteButton.interactable = false;
                 break;
             case TurnManager.Phase.Execute:
-                phaseText.text = "Execution Step";
+                phaseText.text = "공격";
                 commandCompleteButton.interactable = false;
                 break;
         }
