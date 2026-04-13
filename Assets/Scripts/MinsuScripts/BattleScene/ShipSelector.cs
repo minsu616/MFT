@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 public class ShipSelector : MonoBehaviour
 {
+    private ActionButtonUI actionButtonUI; //추가
+
     [Header("색상")]
     public Color selectedColor = new Color(1f, 1f, 0f);
     public Color moveRangeColor = new Color(0f, 1f, 1f);
@@ -23,6 +25,8 @@ public class ShipSelector : MonoBehaviour
     void Start()
     {
         turnManager = FindObjectOfType<TurnManager>();
+        actionButtonUI = FindObjectOfType<ActionButtonUI>(); //추가
+
     }
 
     void Update()
@@ -88,6 +92,8 @@ public class ShipSelector : MonoBehaviour
         ShipController sc = ship.GetComponent<ShipController>();
         Debug.Log($"{sc.GetData().ShipName} 선택!");
 
+        actionButtonUI.ShowButtons(); //추가
+
         ShowMoveRange(ship);
     }
 
@@ -122,6 +128,13 @@ public class ShipSelector : MonoBehaviour
 
     void HandleTileClick(GameObject tile)
     {
+        // 이동 버튼 선택됐는지 체크
+        if (!actionButtonUI.moveSelected)
+        {
+            Debug.Log("이동 버튼을 먼저 선택해주세요!");
+            return;
+        }
+
         if (!turnManager.CanUse(APManager.MOVE_COST))
         {
             Debug.Log("AP 부족! 이동 불가");
@@ -139,8 +152,11 @@ public class ShipSelector : MonoBehaviour
             return;
         }
 
-        //  실제 이동 대신 명령 저장!
         SaveMoveCommand(selectedShip, new Vector2Int(x, z));
+
+        // 이동 명령 저장 후 이동 버튼 해제
+        actionButtonUI.moveSelected = false;
+        actionButtonUI.ShowButtons();
     }
 
     //  이동 명령 저장
