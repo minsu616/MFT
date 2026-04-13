@@ -252,8 +252,17 @@ public class ShipSelector : MonoBehaviour
 
     Vector2Int GetShipCoord(GameObject ship)
     {
-        int x = Mathf.RoundToInt(ship.transform.position.x);
-        int z = Mathf.RoundToInt(ship.transform.position.z);
+        ShipController sc = ship.GetComponent<ShipController>();
+        int size = sc.GetData().Size;
+
+        // 홀수만 쓰므로 정중앙 인덱스 = (size-1)/2
+        int centerIndex = (size - 1) / 2;
+
+        // 고속정(1칸)은 자식이 1개라 무조건 0번
+        Transform centerCell = ship.transform.GetChild(centerIndex);
+        int x = Mathf.RoundToInt(centerCell.position.x);
+        int z = Mathf.RoundToInt(centerCell.position.z);
+
         return new Vector2Int(x, z);
     }
 

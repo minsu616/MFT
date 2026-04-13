@@ -16,10 +16,10 @@ public class BattleSetup : MonoBehaviour
     {
         { ShipController.ShipType.Battleship, 5 },
         { ShipController.ShipType.Carrier,    5 },
-        { ShipController.ShipType.Cruiser,    4 },
+        { ShipController.ShipType.Cruiser,    3 },
         { ShipController.ShipType.Destroyer,  3 },
         { ShipController.ShipType.Submarine,  3 },
-        { ShipController.ShipType.SpeedBoat,  2 },
+        { ShipController.ShipType.SpeedBoat,  1 },
     };
 
     void Start()

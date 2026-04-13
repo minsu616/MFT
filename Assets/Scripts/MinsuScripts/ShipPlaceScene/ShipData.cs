@@ -42,7 +42,7 @@ public class Destroyer : ShipData
 }
 public class Cruiser : ShipData
 {
-    public Cruiser() { ShipName = "순양함"; Size = 4; MaxHP = 400; CurrentHP = MaxHP; Attack = 100; DetectRange = 5; AttackRange = 5; MoveRange = 3; }
+    public Cruiser() { ShipName = "순양함"; Size = 3; MaxHP = 400; CurrentHP = MaxHP; Attack = 100; DetectRange = 5; AttackRange = 5; MoveRange = 3; }
 }
 public class Submarine : ShipData
 {
@@ -50,5 +50,5 @@ public class Submarine : ShipData
 }
 public class SpeedBoat : ShipData
 {
-    public SpeedBoat() { ShipName = "고속정"; Size = 2; MaxHP = 200; CurrentHP = MaxHP; Attack = 60; DetectRange = 6; AttackRange = 3; MoveRange = 6; }
+    public SpeedBoat() { ShipName = "고속정"; Size = 1; MaxHP = 200; CurrentHP = MaxHP; Attack = 60; DetectRange = 6; AttackRange = 3; MoveRange = 6; }
 }
