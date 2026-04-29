@@ -24,7 +24,7 @@ public class ActionButtonUI : MonoBehaviour
 
     // 현재 선택된 행동들 (중복 선택 가능)
     public bool moveSelected { get; set; }
-    public bool attackSelected { get; private set; }
+    public bool attackSelected { get; set; }
     public bool skillSelected { get; private set; }
 
     void Start()

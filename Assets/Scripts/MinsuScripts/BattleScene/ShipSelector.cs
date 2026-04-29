@@ -95,6 +95,10 @@ public class ShipSelector : MonoBehaviour
         actionButtonUI.ShowButtons(); //추가
 
         ShowMoveRange(ship);
+
+        //공격 버튼 누르면 범위 표시
+        AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
+        attackSystem.ShowAttackRange(ship);
     }
 
     void ShowMoveRange(GameObject ship)
