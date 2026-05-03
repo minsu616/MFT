@@ -77,6 +77,7 @@ public class ActionButtonUI : MonoBehaviour
     }
 
     // 공격 버튼 클릭
+    /*
     void OnAttackButton()
     {
         if (!turnManager.CanUse(APManager.ATTACK_COST))
@@ -85,6 +86,37 @@ public class ActionButtonUI : MonoBehaviour
             return;
         }
         attackSelected = !attackSelected; // 토글
+        Debug.Log($"공격 선택: {attackSelected}");
+        UpdateButtonColors();
+    }
+    */
+
+    void OnAttackButton()
+    {
+        if (!turnManager.CanUse(APManager.ATTACK_COST))
+        {
+            Debug.Log("AP 부족! 공격 불가");
+            return;
+        }
+        attackSelected = !attackSelected;
+
+        // 공격 버튼 눌렀을 때만 공격범위 표시
+        AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
+        ShipSelector shipSelector = FindObjectOfType<ShipSelector>();
+
+        if (attackSelected)
+        {
+            // 이동범위 지우고 공격범위 표시
+            shipSelector.ClearHighlightsPublic();
+            attackSystem.ShowAttackRange(shipSelector.GetSelectedShip());
+        }
+        else
+        {
+            // 공격범위 지우고 이동범위 표시
+            attackSystem.ClearHighlightsPublic();
+            shipSelector.ShowMoveRangePublic(shipSelector.GetSelectedShip());
+        }
+
         Debug.Log($"공격 선택: {attackSelected}");
         UpdateButtonColors();
     }

@@ -58,11 +58,17 @@ public class TurnManager : MonoBehaviour
         currentPhase = Phase.Move;
         Debug.Log($"[턴 {turnCount}] 이동 단계 시작!");
 
-        // 실제 이동 실행!
+        //  코루틴이라 완료될때까지 기다려야 함
+        // ExecuteMoveCommands 안에서 OnMoveComplete 호출
         ShipSelector shipSelector = FindObjectOfType<ShipSelector>();
         shipSelector.ExecuteMoveCommands();
 
-        // 이동 완료 후 수행 단계로
+        // 바로 수행단계로 안넘어감! OnMoveComplete에서 넘어감
+    }
+
+    //  이동 완료 후 ShipSelector가 호출
+    public void OnMoveComplete()
+    {
         StartExecutePhase();
     }
 

@@ -7,6 +7,9 @@ public class AttackSystem : MonoBehaviour
     private ShipSelector shipSelector;
     private BattleSetup battleSetup;
     private ActionButtonUI actionButtonUI;
+    
+    // ActionButtonUI에서 호출용
+    public void ClearHighlightsPublic() => ClearHighlights();
 
     // 공격 명령 저장
     [System.Serializable]

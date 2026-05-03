@@ -1,8 +1,13 @@
-﻿using UnityEngine;
+﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
 public class ShipSelector : MonoBehaviour
 {
+    // ActionButtonUI에서 호출용
+    public void ClearHighlightsPublic() => ClearHighlights();
+    public void ShowMoveRangePublic(GameObject ship) => ShowMoveRange(ship);
+
     private ActionButtonUI actionButtonUI; //추가
 
     [Header("색상")]
@@ -67,13 +72,14 @@ public class ShipSelector : MonoBehaviour
         }
     }
 
+
     void SelectShip(GameObject ship)
     {
         if (selectedShip != null)
         {
             if (!HasCommand(selectedShip))
             {
-                // 자식 셀들 색상 복구
+                //자식 셀들 색상 복구
                 foreach (Transform cell in selectedShip.transform)
                     cell.GetComponent<Renderer>().material.color = originalShipColor;
             }
@@ -81,24 +87,18 @@ public class ShipSelector : MonoBehaviour
         }
 
         selectedShip = ship;
-
-        // 자식 첫번째 셀에서 원래 색상 가져오기
+        //자식 첫번째 셀에서 원래 색상 가져오기
         originalShipColor = ship.transform.GetChild(0).GetComponent<Renderer>().material.color;
 
-        // 자식 셀들 전체 노란색으로
+        //자식셀들 전체 노란색으로
         foreach (Transform cell in ship.transform)
             cell.GetComponent<Renderer>().material.color = selectedColor;
 
         ShipController sc = ship.GetComponent<ShipController>();
         Debug.Log($"{sc.GetData().ShipName} 선택!");
 
-        actionButtonUI.ShowButtons(); //추가
-
-        ShowMoveRange(ship);
-
-        //공격 버튼 누르면 범위 표시
-        AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
-        attackSystem.ShowAttackRange(ship);
+        actionButtonUI.ShowButtons();
+        ShowMoveRange(ship); // 이동범위만 표시 (공격범위 제거)
     }
 
     void ShowMoveRange(GameObject ship)
@@ -204,6 +204,11 @@ public class ShipSelector : MonoBehaviour
     // 이동 단계에서 TurnManager가 호출 - 실제 이동 실행
     public void ExecuteMoveCommands()
     {
+        StartCoroutine(ExecuteMoveCoroutine());
+    }
+
+    IEnumerator ExecuteMoveCoroutine()
+    {
         foreach (ShipCommand cmd in commandList)
         {
             if (cmd.hasMoveCommand)
@@ -211,11 +216,65 @@ public class ShipSelector : MonoBehaviour
                 ShipController sc = cmd.ship.GetComponent<ShipController>();
                 int size = sc.GetData().Size;
 
-                // 부모 위치 이동
+                // 현재 위치 (중앙 셀 기준)
+                int centerIndex = (size - 1) / 2;
+                Vector3 currentPos = cmd.ship.transform.GetChild(centerIndex).position;
+
+                int startX = Mathf.RoundToInt(currentPos.x);
+                int startZ = Mathf.RoundToInt(currentPos.z);
+                int targetX = cmd.moveTarget.x + centerIndex; // 중앙 기준 목표
+                int targetZ = cmd.moveTarget.y;
+
+                // X축 이동
+                int stepX = (targetX > startX) ? 1 : -1;
+                for (int x = startX; x != targetX; x += stepX)
+                {
+                    // 부모 이동
+                    cmd.ship.transform.position += new Vector3(stepX, 0, 0);
+
+                    // 자식 셀 위치 재정렬
+                    for (int i = 0; i < cmd.ship.transform.childCount; i++)
+                    {
+                        Transform cell = cmd.ship.transform.GetChild(i);
+                        if (cmd.isHorizontal)
+                            cell.position = new Vector3(
+                                cmd.ship.transform.position.x + i, 0.3f,
+                                cmd.ship.transform.position.z);
+                        else
+                            cell.position = new Vector3(
+                                cmd.ship.transform.position.x, 0.3f,
+                                cmd.ship.transform.position.z + i);
+                    }
+
+                    yield return new WaitForSeconds(0.5f); // 0.5초 대기
+                }
+
+                // Z축 이동
+                int stepZ = (targetZ > startZ) ? 1 : -1;
+                for (int z = startZ; z != targetZ; z += stepZ)
+                {
+                    cmd.ship.transform.position += new Vector3(0, 0, stepZ);
+
+                    for (int i = 0; i < cmd.ship.transform.childCount; i++)
+                    {
+                        Transform cell = cmd.ship.transform.GetChild(i);
+                        if (cmd.isHorizontal)
+                            cell.position = new Vector3(
+                                cmd.ship.transform.position.x + i, 0.3f,
+                                cmd.ship.transform.position.z);
+                        else
+                            cell.position = new Vector3(
+                                cmd.ship.transform.position.x, 0.3f,
+                                cmd.ship.transform.position.z + i);
+                    }
+
+                    yield return new WaitForSeconds(0.5f);
+                }
+
+                // 최종 위치 확정
                 cmd.ship.transform.position = new Vector3(
                     cmd.moveTarget.x, 0.3f, cmd.moveTarget.y);
 
-                // 자식 셀 위치 재정렬
                 for (int i = 0; i < cmd.ship.transform.childCount; i++)
                 {
                     Transform cell = cmd.ship.transform.GetChild(i);
@@ -225,14 +284,22 @@ public class ShipSelector : MonoBehaviour
                         cell.position = new Vector3(cmd.moveTarget.x, 0.3f, cmd.moveTarget.y + i);
                 }
 
-                // 자식 셀 초록색으로 복구
+                // 색상 복구
                 foreach (Transform cell in cmd.ship.transform)
                     cell.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 0.2f);
 
-                Debug.Log($"{sc.GetData().ShipName} 이동 실행! → ({cmd.moveTarget.x}, {cmd.moveTarget.y})");
+                Debug.Log($"{sc.GetData().ShipName} 이동 완료! → ({cmd.moveTarget.x}, {cmd.moveTarget.y})");
             }
         }
+
         commandList.Clear();
+
+        // 이동 완료 후 하이라이트 초기화
+        AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
+        attackSystem.ClearHighlightsPublic();
+
+        // 이동 완료 후 턴 진행 (TurnManager에 알려줌)
+        FindObjectOfType<TurnManager>().OnMoveComplete();
     }
 
     bool HasCommand(GameObject ship)
