@@ -10,6 +10,8 @@ public class BattleSetup : MonoBehaviour
     private List<GameObject> myShips = new List<GameObject>();
     private List<GameObject> enemyShips = new List<GameObject>();
 
+
+
     // 함선 크기 매핑
     private Dictionary<ShipController.ShipType, int> shipSizes
         = new Dictionary<ShipController.ShipType, int>()
@@ -119,6 +121,7 @@ public class BattleSetup : MonoBehaviour
     // 외부에서 함선 목록 가져올 때
     public List<GameObject> GetMyShips() => myShips;
     public List<GameObject> GetEnemyShips() => enemyShips;
+
 
     // 적 함선 보이기/숨기기 토글 (테스트용)
     public void ToggleEnemyVisibility()

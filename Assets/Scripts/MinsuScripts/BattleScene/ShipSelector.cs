@@ -8,7 +8,9 @@ public class ShipSelector : MonoBehaviour
     public void ClearHighlightsPublic() => ClearHighlights();
     public void ShowMoveRangePublic(GameObject ship) => ShowMoveRange(ship);
 
-    private ActionButtonUI actionButtonUI; //추가
+    private ActionButtonUI actionButtonUI;
+    private ErrorPopup errorPopup;
+
 
     [Header("색상")]
     public Color selectedColor = new Color(1f, 1f, 0f);
@@ -30,8 +32,8 @@ public class ShipSelector : MonoBehaviour
     void Start()
     {
         turnManager = FindObjectOfType<TurnManager>();
-        actionButtonUI = FindObjectOfType<ActionButtonUI>(); //추가
-
+        actionButtonUI = FindObjectOfType<ActionButtonUI>();
+        errorPopup = FindObjectOfType<ErrorPopup>();
     }
 
     void Update()
@@ -130,38 +132,6 @@ public class ShipSelector : MonoBehaviour
         }
     }
 
-    void HandleTileClick(GameObject tile)
-    {
-        // 이동 버튼 선택됐는지 체크
-        if (!actionButtonUI.moveSelected)
-        {
-            Debug.Log("이동 버튼을 먼저 선택해주세요!");
-            return;
-        }
-
-        if (!turnManager.CanUse(APManager.MOVE_COST))
-        {
-            Debug.Log("AP 부족! 이동 불가");
-            return;
-        }
-
-        string tileName = tile.name.Replace("Tile (", "").Replace(")", "");
-        string[] coords = tileName.Split(',');
-        int x = int.Parse(coords[0]);
-        int z = int.Parse(coords[1]);
-
-        if (!IsInMoveRange(new Vector2Int(x, z)))
-        {
-            Debug.Log("이동 범위 밖입니다!");
-            return;
-        }
-
-        SaveMoveCommand(selectedShip, new Vector2Int(x, z));
-
-        // 이동 명령 저장 후 이동 버튼 해제
-        actionButtonUI.moveSelected = false;
-        actionButtonUI.ShowButtons();
-    }
 
     //  이동 명령 저장
     void SaveMoveCommand(GameObject ship, Vector2Int targetCoord)
@@ -358,4 +328,128 @@ public class ShipSelector : MonoBehaviour
     }
 
     public GameObject GetSelectedShip() => selectedShip;
+
+    bool IsPathClear(GameObject ship, Vector2Int targetCoord)
+    {
+        ShipController sc = ship.GetComponent<ShipController>();
+        int size = sc.GetData().Size;
+        int centerIndex = (size - 1) / 2;
+
+        // 현재 중앙 좌표
+        Vector2Int currentCoord = GetShipCoord(ship);
+
+        int startX = currentCoord.x;
+        int startZ = currentCoord.y;
+        int endX = targetCoord.x + centerIndex;
+        int endZ = targetCoord.y;
+
+        // X축 경로 체크
+        int stepX = (endX > startX) ? 1 : -1;
+        for (int x = startX + stepX; x != endX + stepX; x += stepX)
+        {
+            if (IsTileOccupied(new Vector2Int(x, startZ), ship))
+            {
+                Debug.Log($"경로 ({x}, {startZ})에 함선이 있습니다!");
+                return false;
+            }
+        }
+
+        // Z축 경로 체크
+        int stepZ = (endZ > startZ) ? 1 : -1;
+        for (int z = startZ + stepZ; z != endZ + stepZ; z += stepZ)
+        {
+            if (IsTileOccupied(new Vector2Int(endX, z), ship))
+            {
+                Debug.Log($"경로 ({endX}, {z})에 함선이 있습니다!");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // 해당 좌표에 함선이 있는지 체크
+    bool IsTileOccupied(Vector2Int coord, GameObject ignorShip)
+    {
+        BattleSetup battleSetup = FindObjectOfType<BattleSetup>();
+
+        // 내 함선 체크
+        foreach (GameObject ship in battleSetup.GetMyShips())
+        {
+            if (ship == ignorShip || !ship.activeSelf) continue;
+
+            ShipController sc = ship.GetComponent<ShipController>();
+            int size = sc.GetData().Size;
+
+            // 함선이 차지하는 모든 칸 체크
+            for (int i = 0; i < size; i++)
+            {
+                Transform cell = ship.transform.GetChild(i);
+                int cx = Mathf.RoundToInt(cell.position.x);
+                int cz = Mathf.RoundToInt(cell.position.z);
+
+                if (cx == coord.x && cz == coord.y)
+                    return true;
+            }
+        }
+
+        // 적 함선 체크
+        foreach (GameObject ship in battleSetup.GetEnemyShips())
+        {
+            if (!ship.activeSelf) continue;
+
+            ShipController sc = ship.GetComponent<ShipController>();
+            int size = sc.GetData().Size;
+
+            for (int i = 0; i < size; i++)
+            {
+                Transform cell = ship.transform.GetChild(i);
+                int cx = Mathf.RoundToInt(cell.position.x);
+                int cz = Mathf.RoundToInt(cell.position.z);
+
+                if (cx == coord.x && cz == coord.y)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    void HandleTileClick(GameObject tile)
+    {
+        if (!actionButtonUI.moveSelected)
+        {
+            Debug.Log("이동 버튼을 먼저 선택해주세요!");
+            return;
+        }
+
+        if (!turnManager.CanUse(APManager.MOVE_COST))
+        {
+            Debug.Log("AP 부족! 이동 불가");
+            return;
+        }
+
+        string tileName = tile.name.Replace("Tile (", "").Replace(")", "");
+        string[] coords = tileName.Split(',');
+        int x = int.Parse(coords[0]);
+        int z = int.Parse(coords[1]);
+
+        if (!IsInMoveRange(new Vector2Int(x, z)))
+        {
+            Debug.Log("이동 범위 밖입니다!");
+            return;
+        }
+
+        //  경로 충돌 체크 추가
+        if (!IsPathClear(selectedShip, new Vector2Int(x, z)))
+        {
+            Debug.Log("경로에 함선이 있어 이동할 수 없습니다!");
+            errorPopup.ShowError();
+            return;
+        }
+
+        SaveMoveCommand(selectedShip, new Vector2Int(x, z));
+        actionButtonUI.moveSelected = false;
+        actionButtonUI.ShowButtons();
+    }
 }
