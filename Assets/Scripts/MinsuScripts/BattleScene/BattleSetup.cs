@@ -36,15 +36,6 @@ public class BattleSetup : MonoBehaviour
         SpawnEnemyFleet();
     }
 
-    void Update()
-    {
-        // T키 누르면 적 함선 보이기/숨기기
-        if (Input.GetKeyDown(KeyCode.T))
-        {
-            ToggleEnemyVisibility();
-            Debug.Log("적 함선 토글!");
-        }
-    }
 
     // 내 함선 생성
     void SpawnMyFleet()
@@ -121,19 +112,5 @@ public class BattleSetup : MonoBehaviour
     // 외부에서 함선 목록 가져올 때
     public List<GameObject> GetMyShips() => myShips;
     public List<GameObject> GetEnemyShips() => enemyShips;
-
-
-    // 적 함선 보이기/숨기기 토글 (테스트용)
-    public void ToggleEnemyVisibility()
-    {
-        foreach (GameObject ship in enemyShips)
-        {
-            foreach (Transform cell in ship.transform)
-            {
-                Renderer rend = cell.GetComponent<Renderer>();
-                rend.enabled = !rend.enabled; // 켜져있으면 끄고, 꺼져있으면 켜고
-            }
-        }
-    }
 
 }

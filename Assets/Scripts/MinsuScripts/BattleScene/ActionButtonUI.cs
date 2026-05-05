@@ -92,6 +92,7 @@ public class ActionButtonUI : MonoBehaviour
         if (attackSystem.HasAttackCommand(shipSelector.GetSelectedShip()))
         {
             Debug.Log("이미 공격 명령이 저장된 함선입니다!");
+            FindObjectOfType<ErrorPopup>().ShowError();
             return;
         }
 
