@@ -7,7 +7,8 @@ public class AttackSystem : MonoBehaviour
     private ShipSelector shipSelector;
     private BattleSetup battleSetup;
     private ActionButtonUI actionButtonUI;
-    
+    private ErrorPopup errorPopup;
+
     // ActionButtonUI에서 호출용
     public void ClearHighlightsPublic() => ClearHighlights();
 
@@ -29,6 +30,7 @@ public class AttackSystem : MonoBehaviour
         shipSelector = FindObjectOfType<ShipSelector>();
         battleSetup = FindObjectOfType<BattleSetup>();
         actionButtonUI = FindObjectOfType<ActionButtonUI>();
+        errorPopup = FindObjectOfType<ErrorPopup>();
     }
 
     void Update()
@@ -81,6 +83,14 @@ public class AttackSystem : MonoBehaviour
         if (selectedShip == null)
         {
             Debug.Log("함선을 먼저 선택해주세요!");
+            return;
+        }
+
+        AttackCommand existing = attackCommandList.Find(c => c.attacker == selectedShip);
+        if (existing != null)
+        {
+            Debug.Log("이미 공격 명령이 저장된 함선입니다!");
+            errorPopup.ShowError(); // ErrorPopup 있으면 표시
             return;
         }
 
@@ -268,5 +278,11 @@ public class AttackSystem : MonoBehaviour
         return new Vector2Int(
             Mathf.RoundToInt(centerCell.position.x),
             Mathf.RoundToInt(centerCell.position.z));
+    }
+
+    //외부에서 공격 명령 여부 확인
+    public bool HasAttackCommand(GameObject ship)
+    {
+        return attackCommandList.Find(c => c.attacker == ship) != null;
     }
 }

@@ -76,20 +76,6 @@ public class ActionButtonUI : MonoBehaviour
         UpdateButtonColors();
     }
 
-    // 공격 버튼 클릭
-    /*
-    void OnAttackButton()
-    {
-        if (!turnManager.CanUse(APManager.ATTACK_COST))
-        {
-            Debug.Log("AP 부족! 공격 불가");
-            return;
-        }
-        attackSelected = !attackSelected; // 토글
-        Debug.Log($"공격 선택: {attackSelected}");
-        UpdateButtonColors();
-    }
-    */
 
     void OnAttackButton()
     {
@@ -98,21 +84,28 @@ public class ActionButtonUI : MonoBehaviour
             Debug.Log("AP 부족! 공격 불가");
             return;
         }
-        attackSelected = !attackSelected;
 
-        // 공격 버튼 눌렀을 때만 공격범위 표시
         AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
         ShipSelector shipSelector = FindObjectOfType<ShipSelector>();
 
+        //  공격 명령 이미 저장된 경우 → 버튼 토글만 막기
+        if (attackSystem.HasAttackCommand(shipSelector.GetSelectedShip()))
+        {
+            Debug.Log("이미 공격 명령이 저장된 함선입니다!");
+            return;
+        }
+
+        // 공격 명령 없을 때만 토글 허용
+        attackSelected = !attackSelected;
+
+        // 기존 범위 표시 코드
         if (attackSelected)
         {
-            // 이동범위 지우고 공격범위 표시
             shipSelector.ClearHighlightsPublic();
             attackSystem.ShowAttackRange(shipSelector.GetSelectedShip());
         }
         else
         {
-            // 공격범위 지우고 이동범위 표시
             attackSystem.ClearHighlightsPublic();
             shipSelector.ShowMoveRangePublic(shipSelector.GetSelectedShip());
         }
