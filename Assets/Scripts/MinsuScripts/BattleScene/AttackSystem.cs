@@ -19,6 +19,7 @@ public class AttackSystem : MonoBehaviour
         public GameObject attacker;      // 공격하는 내 함선
         public Vector2Int attackCoord;   // 공격 좌표
         public int attackCount;          // 공격 횟수 (공격만: 2회, 이동+공격: 1회)
+        public Vector2Int fromCoord;     //이동+공격시 이동 후 위치
     }
 
     private List<AttackCommand> attackCommandList = new List<AttackCommand>();
@@ -196,10 +197,18 @@ public class AttackSystem : MonoBehaviour
             ShipController attackerSC = cmd.attacker.GetComponent<ShipController>();
             int detectRange = attackerSC.GetData().DetectRange;
             int attackRange = attackerSC.GetData().AttackRange;
-            Vector2Int myCoord = GetShipCenterCoord(cmd.attacker);
 
-            // 타겟 다시 찾기 (이동 후 위치 기준)
-            GameObject targetEnemy = FindTargetEnemy(myCoord, cmd.attackCoord, detectRange, attackRange);
+            // fromCoord가 설정됐으면 이동 후 위치 기준
+            // 설정 안됐으면 (공격만) 현재 위치 기준
+            Vector2Int baseCoord;
+            if (cmd.fromCoord != Vector2Int.zero)
+                baseCoord = cmd.fromCoord;
+            else
+                baseCoord = GetShipCenterCoord(cmd.attacker);
+
+            Debug.Log($"공격 기준 좌표: ({baseCoord.x}, {baseCoord.y})");
+
+            GameObject targetEnemy = FindTargetEnemy(baseCoord, cmd.attackCoord, detectRange, attackRange);
 
             if (targetEnemy == null)
             {
@@ -207,17 +216,15 @@ public class AttackSystem : MonoBehaviour
                 continue;
             }
 
-            // 공격 횟수만큼 데미지
             ShipController enemySC = targetEnemy.GetComponent<ShipController>();
             for (int i = 0; i < cmd.attackCount; i++)
             {
                 enemySC.TakeDamage(attackerSC.GetData().Attack);
-                Debug.Log($"{attackerSC.GetData().ShipName} → {enemySC.GetData().ShipName} 공격! " +
+                Debug.Log($"{attackerSC.GetData().ShipName} → {enemySC.GetData().ShipName} " +
                           $"데미지: {attackerSC.GetData().Attack} " +
                           $"남은HP: {enemySC.GetData().CurrentHP}/{enemySC.GetData().MaxHP}");
             }
         }
-
         attackCommandList.Clear();
     }
 
@@ -284,5 +291,50 @@ public class AttackSystem : MonoBehaviour
     public bool HasAttackCommand(GameObject ship)
     {
         return attackCommandList.Find(c => c.attacker == ship) != null;
+    }
+
+    // 이동 후 위치 기준 공격범위 표시
+    public void ShowAttackRangeFromCoord(GameObject ship, Vector2Int fromCoord)
+    {
+        ClearHighlights();
+
+        ShipController sc = ship.GetComponent<ShipController>();
+        int attackRange = sc.GetData().AttackRange;
+
+        for (int x = -attackRange; x <= attackRange; x++)
+        {
+            for (int z = -attackRange; z <= attackRange; z++)
+            {
+                int tx = fromCoord.x + x;
+                int tz = fromCoord.y + z;
+                if (tx < 0 || tx >= 30 || tz < 0 || tz >= 30) continue;
+
+                GameObject tile = GameObject.Find($"Tile ({tx},{tz})");
+                if (tile != null)
+                {
+                    tile.GetComponent<Renderer>().material.color = new Color(1f, 0.3f, 0.3f);
+                    highlightedTiles.Add(tile);
+                }
+            }
+        }
+    }
+
+    // 외부에서 공격 명령 저장 (이동+공격용)
+    public void SaveAttackCommandExternal(GameObject attacker, Vector2Int coord, int count, Vector2Int fromCoord)
+    {
+        AttackCommand cmd = new AttackCommand();
+        cmd.attacker = attacker;
+        cmd.attackCoord = coord;
+        cmd.attackCount = count;
+        cmd.fromCoord = fromCoord; // 이동 후 위치 기준
+        attackCommandList.Add(cmd);
+
+        Debug.Log($"이동+공격 명령 저장! 이동위치:({fromCoord.x},{fromCoord.y}) 공격좌표:({coord.x},{coord.y})");
+    }
+
+    // 외부에서 공격 시도 (공격만 선택용)
+    public void TryAttackPublic(Vector2Int clickCoord)
+    {
+        TryAttack(clickCoord);
     }
 }

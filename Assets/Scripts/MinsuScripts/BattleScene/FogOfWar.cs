@@ -19,22 +19,33 @@ public class FogOfWar : MonoBehaviour
 
     void UpdateFogOfWar()
     {
+        if (battleSetup == null) return;
+
         List<GameObject> myShips = battleSetup.GetMyShips();
         List<GameObject> enemyShips = battleSetup.GetEnemyShips();
 
+        if (myShips == null || enemyShips == null) return;
+
         foreach (GameObject enemy in enemyShips)
         {
-            if (enemy == null || !enemy.activeSelf) continue;
+            // null 체크 강화
+            if (enemy == null) continue;
 
             bool detected = false;
 
-            // 내 함선 중 하나라도 탐지 범위 안에 적이 있으면 보이게
             foreach (GameObject myShip in myShips)
             {
-                if (myShip == null || !myShip.activeSelf) continue;
+                // null 체크 강화
+                if (myShip == null) continue;
+                if (!myShip.activeSelf) continue;
 
                 ShipController sc = myShip.GetComponent<ShipController>();
-                int detectRange = sc.GetData().DetectRange;
+                if (sc == null) continue; // ShipController null 체크
+
+                ShipData data = sc.GetData();
+                if (data == null) continue; // ShipData null 체크
+
+                int detectRange = data.DetectRange;
 
                 Vector2Int myCoord = GetShipCenterCoord(myShip);
                 Vector2Int enemyCoord = GetShipCenterCoord(enemy);
@@ -49,9 +60,10 @@ public class FogOfWar : MonoBehaviour
                 }
             }
 
-            // 탐지됐으면 보이게, 아니면 숨기기
+            // enemy 활성화 여부 상관없이 자식 셀 체크
             foreach (Transform cell in enemy.transform)
             {
+                if (cell == null) continue;
                 Renderer rend = cell.GetComponent<Renderer>();
                 if (rend != null)
                     rend.enabled = detected;
