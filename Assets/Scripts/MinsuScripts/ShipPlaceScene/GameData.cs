@@ -16,6 +16,7 @@ public class GameData : MonoBehaviour
     public static GameData Instance;
 
     public List<ShipInfo> myFleet = new List<ShipInfo>(); // 내 함선 데이터
+    public List<ShipInfo> enemyFleet = new List<ShipInfo>();//적 함선 데이터
 
     void Awake()
     {
@@ -41,5 +42,6 @@ public class GameData : MonoBehaviour
     public void ClearFleet()
     {
         myFleet.Clear();
+        enemyFleet.Clear();
     }
 }

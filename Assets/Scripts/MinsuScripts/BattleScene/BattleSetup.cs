@@ -51,35 +51,24 @@ public class BattleSetup : MonoBehaviour
     // 상대 함선 생성 (나중에 Photon으로 받아올 예정, 지금은 테스트용 임시 배치)
     void SpawnEnemyFleet()
     {
-        /*
-        int[] sizes = { 5, 5, 4, 3, 3, 2 };
-        ShipController.ShipType[] types = {
-        ShipController.ShipType.Battleship,
-        ShipController.ShipType.Carrier,
-        ShipController.ShipType.Cruiser,
-        ShipController.ShipType.Destroyer,
-        ShipController.ShipType.Submarine,
-        ShipController.ShipType.SpeedBoat
-    };
-
-        for (int i = 0; i < types.Length; i++)
+        if (GameData.Instance.enemyFleet.Count == 0)
         {
-            ShipInfo info = new ShipInfo();
-            info.shipType = types[i];
-            info.coordinate = new Vector2Int(20, i * 4);
-            info.isHorizontal = true;
+            Debug.Log("상대방 배치 데이터 없음!");
+            return;
+        }
 
-            GameObject ship = CreateShip(info, enemyShipColor, "Enemy_" + types[i].ToString());
+        foreach (ShipInfo info in GameData.Instance.enemyFleet)
+        {
+            GameObject ship = CreateShip(info, enemyShipColor,
+                "Enemy_" + info.shipType.ToString());
 
-            // 부모 대신 자식 셀들 Renderer 끄기
+            // 상대 배 숨기기
             foreach (Transform cell in ship.transform)
                 cell.GetComponent<Renderer>().enabled = false;
 
             enemyShips.Add(ship);
         }
-        Debug.Log($"상대 함선 {enemyShips.Count}척 생성완료! (숨김 상태)");
-        */
-        Debug.Log("상대 함선 대기 중... (Photon 연동 후 구현)");
+        Debug.Log($"상대 함선 {enemyShips.Count}척 생성완료!");
     }
 
     // 함선 오브젝트 생성
