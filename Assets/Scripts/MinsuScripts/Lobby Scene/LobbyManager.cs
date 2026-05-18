@@ -13,6 +13,8 @@ public class LobbyManager : MonoBehaviourPunCallbacks
 
     void Start()
     {
+        PhotonNetwork.AutomaticallySyncScene = true;
+
         // 서버 연결
         if (!PhotonNetwork.IsConnected)
         {
@@ -100,6 +102,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
             statusText.text = "2명 모임! 게임 시작!";
             if (PhotonNetwork.IsMasterClient)
             {
+                PhotonNetwork.AutomaticallySyncScene = true;
                 PhotonNetwork.LoadLevel("ShipPlacement");
             }
         }

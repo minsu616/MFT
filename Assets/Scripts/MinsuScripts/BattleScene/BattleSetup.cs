@@ -51,6 +51,7 @@ public class BattleSetup : MonoBehaviour
     // 상대 함선 생성 (나중에 Photon으로 받아올 예정, 지금은 테스트용 임시 배치)
     void SpawnEnemyFleet()
     {
+        /*
         int[] sizes = { 5, 5, 4, 3, 3, 2 };
         ShipController.ShipType[] types = {
         ShipController.ShipType.Battleship,
@@ -77,6 +78,8 @@ public class BattleSetup : MonoBehaviour
             enemyShips.Add(ship);
         }
         Debug.Log($"상대 함선 {enemyShips.Count}척 생성완료! (숨김 상태)");
+        */
+        Debug.Log("상대 함선 대기 중... (Photon 연동 후 구현)");
     }
 
     // 함선 오브젝트 생성
