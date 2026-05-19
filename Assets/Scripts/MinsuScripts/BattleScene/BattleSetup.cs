@@ -36,6 +36,45 @@ public class BattleSetup : MonoBehaviour
         SpawnEnemyFleet();
     }
 
+    //테스트용 적 함선 생성 코드 start
+    void Update()
+    {
+        // T키 누르면 테스트용 적 함선 1척 생성
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            SpawnTestEnemy();
+        }
+    }
+    void SpawnTestEnemy()
+    {
+        // 이미 테스트 적 있으면 삭제 후 재생성
+        GameObject existing = GameObject.Find("Enemy_Test");
+        if (existing != null) Destroy(existing);
+
+        ShipInfo info = new ShipInfo();
+        info.shipType = ShipController.ShipType.SpeedBoat; // 1칸짜리 고속정
+        info.coordinate = new Vector2Int(15, 15);           // 맵 중앙
+        info.isHorizontal = true;
+
+        GameObject testEnemy = CreateShip(info, enemyShipColor, "Enemy_Test");
+
+        // 처음엔 숨기기 (Fog of War 테스트용)
+        foreach (Transform cell in testEnemy.transform)
+        {
+            if (cell.name == "HPBar")
+            {
+                cell.gameObject.SetActive(false);
+                continue;
+            }
+            Renderer rend = cell.GetComponent<Renderer>();
+            if (rend != null) rend.enabled = false;
+        }
+
+        enemyShips.Add(testEnemy);
+        Debug.Log("테스트 적 함선 생성! 좌표: (15, 15)");
+    }
+    //테스트용 함선 생성코드 end
+
 
     // 내 함선 생성
     void SpawnMyFleet()
@@ -97,6 +136,22 @@ public class BattleSetup : MonoBehaviour
 
         ShipController sc = shipParent.AddComponent<ShipController>();
         sc.shipType = info.shipType;
+
+        if (shipName.StartsWith("My_")) //내 함선 HP바
+        {
+            GameObject hpBarObj = new GameObject("HPBar");
+            hpBarObj.transform.parent = shipParent.transform;
+            hpBarObj.AddComponent<HPBar>();
+        }
+
+        if (shipName.StartsWith("Enemy_")) //적 함선 HP바
+        {
+            GameObject hpBarObj = new GameObject("HPBar");
+            hpBarObj.transform.parent = shipParent.transform;
+            HPBar hpBar = hpBarObj.AddComponent<HPBar>();
+            // 처음엔 숨기기 (Fog of War)
+            hpBarObj.SetActive(false);
+        }
 
         return shipParent;
     }

@@ -61,9 +61,18 @@ public class FogOfWar : MonoBehaviour
             }
 
             // enemy 활성화 여부 상관없이 자식 셀 체크
+            // 탐지됐으면 보이게, 아니면 숨기기
             foreach (Transform cell in enemy.transform)
             {
                 if (cell == null) continue;
+
+                // HPBar는 따로 처리
+                if (cell.name == "HPBar")
+                {
+                    cell.gameObject.SetActive(detected);
+                    continue;
+                }
+
                 Renderer rend = cell.GetComponent<Renderer>();
                 if (rend != null)
                     rend.enabled = detected;

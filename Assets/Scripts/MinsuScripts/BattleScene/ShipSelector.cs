@@ -97,7 +97,11 @@ public class ShipSelector : MonoBehaviour
             {
                 //자식 셀들 색상 복구
                 foreach (Transform cell in selectedShip.transform)
+                {
+                    if (cell.name == "HPBar") continue;
                     cell.GetComponent<Renderer>().material.color = originalShipColor;
+                }
+                    
             }
             ClearHighlights();
         }
@@ -108,8 +112,11 @@ public class ShipSelector : MonoBehaviour
 
         //자식셀들 전체 노란색으로
         foreach (Transform cell in ship.transform)
+        {
+            if (cell.name == "HPBar") continue;
             cell.GetComponent<Renderer>().material.color = selectedColor;
-
+        }
+            
         ShipController sc = ship.GetComponent<ShipController>();
         Debug.Log($"{sc.GetData().ShipName} 선택!");
 
@@ -178,7 +185,11 @@ public class ShipSelector : MonoBehaviour
 
         // 자식 셀 전체 주황색으로
         foreach (Transform cell in ship.transform)
+        {
+            if (cell.name == "HPBar") continue;
             cell.GetComponent<Renderer>().material.color = commandedColor;
+        }
+            
 
         Debug.Log($"{sc.GetData().ShipName} 이동 명령 저장! → ({targetCoord.x}, {targetCoord.y}) 남은 AP: {turnManager.GetCurrentAP()}");
         ClearHighlights();
@@ -269,7 +280,10 @@ public class ShipSelector : MonoBehaviour
 
                 // 색상 복구
                 foreach (Transform cell in cmd.ship.transform)
+                {
+                    if (cell.name == "HPBar") continue;
                     cell.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 0.2f);
+                }
 
                 Debug.Log($"{sc.GetData().ShipName} 이동 완료! → ({cmd.moveTarget.x}, {cmd.moveTarget.y})");
             }
