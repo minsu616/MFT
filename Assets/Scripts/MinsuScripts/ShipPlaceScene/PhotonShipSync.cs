@@ -13,12 +13,12 @@ public class PhotonShipSync : MonoBehaviourPunCallbacks, IOnEventCallback
     private bool myReady = false;
     private bool enemyReady = false;
 
-    void OnEnable()
+    public override void OnEnable()
     {
         PhotonNetwork.AddCallbackTarget(this);
     }
 
-    void OnDisable()
+    public override void OnDisable()
     {
         PhotonNetwork.RemoveCallbackTarget(this);
     }

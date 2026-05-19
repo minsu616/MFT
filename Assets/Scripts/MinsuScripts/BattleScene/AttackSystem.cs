@@ -152,129 +152,6 @@ public class AttackSystem : MonoBehaviour
     }
 
     // ──────────────────────────────────────────────
-    //  실행 단계 — 미사일 발사 후 데미지 처리
-    // ──────────────────────────────────────────────
-    public void ExecuteAttackCommands()
-    {
-        StartCoroutine(ExecuteAllMissiles());
-    }
-
-    IEnumerator ExecuteAllMissiles()
-    {
-        foreach (AttackCommand cmd in attackCommandList)
-        {
-            ShipController attackerSC = cmd.attacker.GetComponent<ShipController>();
-            int detectRange = attackerSC.GetData().DetectRange;
-            int attackRange = attackerSC.GetData().AttackRange;
-
-            Vector2Int baseCoord = (cmd.fromCoord != Vector2Int.zero)
-                ? cmd.fromCoord
-                : GetShipCenterCoord(cmd.attacker);
-
-            GameObject targetEnemy =
-                FindTargetEnemy(baseCoord, cmd.attackCoord, detectRange, attackRange);
-
-            if (targetEnemy == null)
-            {
-                Debug.Log($"{attackerSC.GetData().ShipName} 공격 실패 — 범위 안에 적 없음");
-                continue;
-            }
-
-            // ── 미사일을 attackCount 발 순서대로 발사 ──
-            for (int i = 0; i < cmd.attackCount; i++)
-            {
-                LaunchMissile(
-                    attacker: cmd.attacker,
-                    targetEnemy: targetEnemy,
-                    attackCoord: cmd.attackCoord,
-                    damage: attackerSC.GetData().Attack,
-                    attackCount: 1   // 미사일 한 발 = 데미지 1회
-                );
-
-                if (i < cmd.attackCount - 1)
-                    yield return new WaitForSeconds(missileInterval);
-            }
-        }
-
-        attackCommandList.Clear();
-    }
-
-    // ──────────────────────────────────────────────
-    //  미사일 생성 & 발사
-    // ──────────────────────────────────────────────
-    void LaunchMissile(
-        GameObject attacker,
-        GameObject targetEnemy,
-        Vector2Int attackCoord,
-        int damage,
-        int attackCount)
-    {
-        if (missilePrefab == null)
-        {
-            Debug.LogWarning("missilePrefab이 할당되지 않았습니다! Inspector에서 연결하세요.");
-            // 프리펩 없으면 즉시 데미지 처리(폴백)
-            ApplyDamage(targetEnemy, damage, attackCount, attacker.name);
-            return;
-        }
-
-        // 발사 위치: 함선 중앙 위
-        Vector2Int shipCoord = GetShipCenterCoord(attacker);
-        Vector3 spawnPos = new Vector3(shipCoord.x, missileSpawnHeight, shipCoord.y);
-
-        // 목표 위치: 클릭 좌표 (지면 높이 0)
-        Vector3 targetPos = new Vector3(attackCoord.x, 0f, attackCoord.y);
-
-        // 미사일 인스턴스 생성
-        GameObject missileObj = Instantiate(missilePrefab, spawnPos, Quaternion.identity);
-        Missile missile = missileObj.GetComponent<Missile>();
-
-        if (missile == null)
-        {
-            Debug.LogError("미사일 프리펩에 Missile.cs 컴포넌트가 없습니다!");
-            Destroy(missileObj);
-            return;
-        }
-
-        // 데미지 정보 세팅
-        missile.damage = damage;
-        missile.attackCount = attackCount;
-        missile.targetEnemyName = targetEnemy.name;
-
-        // 도착 콜백 — 미사일이 목표에 닿으면 데미지 적용
-        string enemyName = targetEnemy.name;   // 클로저용 캡처
-        missile.OnArrived += (m) =>
-        {
-            // 도착 시점에 적이 아직 살아 있는지 재확인
-            GameObject enemy = GameObject.Find(enemyName);
-            if (enemy != null && enemy.activeSelf)
-                ApplyDamage(enemy, m.damage, m.attackCount, attacker.name);
-            else
-                Debug.Log($"{enemyName} 은(는) 이미 격침됨 — 데미지 스킵");
-        };
-
-        missile.Launch(spawnPos, targetPos);
-
-        Debug.Log($"미사일 발사! {attacker.name} → ({attackCoord.x},{attackCoord.y})");
-    }
-
-    // ──────────────────────────────────────────────
-    //  실제 데미지 적용 (Missile.OnArrived에서 호출)
-    // ──────────────────────────────────────────────
-    void ApplyDamage(GameObject enemy, int damage, int count, string attackerName)
-    {
-        ShipController enemySC = enemy.GetComponent<ShipController>();
-        if (enemySC == null) return;
-
-        for (int i = 0; i < count; i++)
-        {
-            enemySC.TakeDamage(damage);
-            Debug.Log($"{attackerName} → {enemySC.GetData().ShipName} " +
-                      $"데미지: {damage}  " +
-                      $"남은HP: {enemySC.GetData().CurrentHP}/{enemySC.GetData().MaxHP}");
-        }
-    }
-
-    // ──────────────────────────────────────────────
     //  탐지+공격 범위 안 타겟 탐색
     // ──────────────────────────────────────────────
     GameObject FindTargetEnemy(
@@ -322,6 +199,38 @@ public class AttackSystem : MonoBehaviour
             attackCoord = coord,
             attackCount = count
         });
+    }
+
+    public void ExecuteAttackCommands()
+    {
+        foreach (AttackCommand cmd in attackCommandList)
+        {
+            ShipController attackerSC = cmd.attacker.GetComponent<ShipController>();
+            int detectRange = attackerSC.GetData().DetectRange;
+            int attackRange = attackerSC.GetData().AttackRange;
+
+            Vector2Int baseCoord = (cmd.fromCoord != Vector2Int.zero)
+                ? cmd.fromCoord
+                : GetShipCenterCoord(cmd.attacker);
+
+            GameObject targetEnemy = FindTargetEnemy(baseCoord, cmd.attackCoord, detectRange, attackRange);
+
+            if (targetEnemy == null)
+            {
+                Debug.Log($"{attackerSC.GetData().ShipName} 공격 실패!");
+                continue;
+            }
+
+            ShipController enemySC = targetEnemy.GetComponent<ShipController>();
+            for (int i = 0; i < cmd.attackCount; i++)
+            {
+                enemySC.TakeDamage(attackerSC.GetData().Attack);
+                Debug.Log($"{attackerSC.GetData().ShipName} → {enemySC.GetData().ShipName} " +
+                          $"데미지: {attackerSC.GetData().Attack} " +
+                          $"남은HP: {enemySC.GetData().CurrentHP}/{enemySC.GetData().MaxHP}");
+            }
+        }
+        attackCommandList.Clear();
     }
 
     // ──────────────────────────────────────────────
