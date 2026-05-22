@@ -295,6 +295,9 @@ public class ShipSelector : MonoBehaviour
         AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
         attackSystem.ClearHighlightsPublic();
 
+        // 이동 후 FogOfWar 강제 업데이트
+        FindObjectOfType<FogOfWar>().ForceUpdate();
+
         // 이동 완료 후 턴 진행 (TurnManager에 알려줌)
         FindObjectOfType<TurnManager>().OnMoveComplete();
     }

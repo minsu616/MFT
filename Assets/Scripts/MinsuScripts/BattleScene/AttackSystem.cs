@@ -13,6 +13,9 @@ public class AttackSystem : MonoBehaviour
     private ActionButtonUI actionButtonUI;
     private ErrorPopup errorPopup;
 
+    private FogOfWar fogOfWar;
+
+    /*
     // ──────────────────────────────────────────────
     //  미사일 설정 (Inspector)
     // ──────────────────────────────────────────────
@@ -25,6 +28,7 @@ public class AttackSystem : MonoBehaviour
 
     [Tooltip("미사일 여러 발을 쏠 때 발사 간격 (초)")]
     public float missileInterval = 0.3f;
+    */
 
     // ──────────────────────────────────────────────
     //  공격 명령 데이터
@@ -51,6 +55,7 @@ public class AttackSystem : MonoBehaviour
         battleSetup = FindObjectOfType<BattleSetup>();
         actionButtonUI = FindObjectOfType<ActionButtonUI>();
         errorPopup = FindObjectOfType<ErrorPopup>();
+        fogOfWar = FindObjectOfType<FogOfWar>();
     }
 
     // ──────────────────────────────────────────────
@@ -141,7 +146,7 @@ public class AttackSystem : MonoBehaviour
             return;
         }
 
-        SaveAttackCommand(selectedShip, clickCoord, 2);
+        SaveAttackCommand(selectedShip, clickCoord, 1);
         turnManager.UseAP(APManager.ATTACK_COST);
 
         Debug.Log($"{sc.GetData().ShipName} 공격 명령 저장! → ({clickCoord.x},{clickCoord.y}) 대상: {targetEnemy.name}");
@@ -203,6 +208,15 @@ public class AttackSystem : MonoBehaviour
 
     public void ExecuteAttackCommands()
     {
+        StartCoroutine(ExecuteAllMissiles());
+    }
+
+    IEnumerator ExecuteAllMissiles()
+    {
+        // WaitForSeconds 캐싱
+        WaitForSeconds waitInterval = new WaitForSeconds(0.3f);
+        WaitForSeconds waitArrival = new WaitForSeconds(2.5f);
+
         foreach (AttackCommand cmd in attackCommandList)
         {
             ShipController attackerSC = cmd.attacker.GetComponent<ShipController>();
@@ -213,7 +227,8 @@ public class AttackSystem : MonoBehaviour
                 ? cmd.fromCoord
                 : GetShipCenterCoord(cmd.attacker);
 
-            GameObject targetEnemy = FindTargetEnemy(baseCoord, cmd.attackCoord, detectRange, attackRange);
+            GameObject targetEnemy = FindTargetEnemy(
+                baseCoord, cmd.attackCoord, detectRange, attackRange);
 
             if (targetEnemy == null)
             {
@@ -221,16 +236,73 @@ public class AttackSystem : MonoBehaviour
                 continue;
             }
 
-            ShipController enemySC = targetEnemy.GetComponent<ShipController>();
-            for (int i = 0; i < cmd.attackCount; i++)
+            int missileCount = GetMissileCount(attackerSC.shipType);
+            int damagePerMissile = attackerSC.GetData().Attack / missileCount;
+
+            for (int i = 0; i < missileCount; i++)
             {
-                enemySC.TakeDamage(attackerSC.GetData().Attack);
-                Debug.Log($"{attackerSC.GetData().ShipName} → {enemySC.GetData().ShipName} " +
-                          $"데미지: {attackerSC.GetData().Attack} " +
-                          $"남은HP: {enemySC.GetData().CurrentHP}/{enemySC.GetData().MaxHP}");
+                LaunchMissile(cmd.attacker, targetEnemy,
+                    cmd.attackCoord, damagePerMissile,
+                    attackerSC.shipType);
+
+                yield return waitInterval; // 캐싱된 객체 사용
             }
+
+            yield return waitArrival; // 캐싱된 객체 사용
         }
+
         attackCommandList.Clear();
+        turnManager.OnAttackComplete();
+    }
+
+    void LaunchMissile(
+        GameObject attacker,
+        GameObject targetEnemy,
+        Vector2Int attackCoord,
+        int damage,
+        ShipController.ShipType shipType)
+    {
+        Vector2Int shipCoord = GetShipCenterCoord(attacker);
+        Vector3 spawnPos = new Vector3(shipCoord.x, 1.5f, shipCoord.y);
+        Vector3 targetPos = new Vector3(attackCoord.x, 0f, attackCoord.y);
+
+        // MissileFactory로 함선 타입별 발사체 생성
+        GameObject missileObj = MissileFactory.CreateMissile(shipType);
+        missileObj.transform.position = spawnPos;
+
+        Missile missile = missileObj.GetComponent<Missile>();
+        missile.damage = damage;
+        missile.attackCount = 1;
+        missile.targetEnemyName = targetEnemy.name;
+
+        string enemyName = targetEnemy.name;
+        missile.OnArrived += (m) =>
+        {
+            GameObject enemy = GameObject.Find(enemyName);
+            if (enemy != null && enemy.activeSelf)
+            {
+                ShipController enemySC = enemy.GetComponent<ShipController>();
+                enemySC.TakeDamage(m.damage);
+                Debug.Log($"데미지: {m.damage} 남은HP: {enemySC.GetData().CurrentHP}");
+            }
+        };
+
+        missile.Launch(spawnPos, targetPos);
+    }
+
+    // 함선 타입별 발사체 개수
+    int GetMissileCount(ShipController.ShipType shipType)
+    {
+        switch (shipType)
+        {
+            case ShipController.ShipType.Battleship: return 1; // 전함: 1발
+            case ShipController.ShipType.Carrier: return 3; // 항모: 3발
+            case ShipController.ShipType.Destroyer: return 2; // 구축함: 2발
+            case ShipController.ShipType.Cruiser: return 2; // 순양함: 2발
+            case ShipController.ShipType.Submarine: return 1; // 잠수함: 1발
+            case ShipController.ShipType.SpeedBoat: return 3; // 고속정: 3발
+            default: return 1;
+        }
     }
 
     // ──────────────────────────────────────────────

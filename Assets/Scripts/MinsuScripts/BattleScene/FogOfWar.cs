@@ -1,8 +1,12 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
+using static TurnManager;
 
 public class FogOfWar : MonoBehaviour
 {
+    private float updateInterval = 0.1f; // 0.1초마다 업데이트
+    private float lastUpdateTime = 0f;
+
     private BattleSetup battleSetup;
     private TurnManager turnManager;
 
@@ -10,9 +14,19 @@ public class FogOfWar : MonoBehaviour
     {
         battleSetup = FindObjectOfType<BattleSetup>();
         turnManager = FindObjectOfType<TurnManager>();
+        
     }
 
     void Update()
+    {
+        if (Time.time - lastUpdateTime >= updateInterval)
+        {
+            lastUpdateTime = Time.time;
+            UpdateFogOfWar();
+        }
+    }
+
+    public void ForceUpdate()
     {
         UpdateFogOfWar();
     }
@@ -82,11 +96,25 @@ public class FogOfWar : MonoBehaviour
 
     Vector2Int GetShipCenterCoord(GameObject ship)
     {
+        if (ship == null) return Vector2Int.zero;
+
         ShipController sc = ship.GetComponent<ShipController>();
-        int size = sc.GetData().Size;
+        if (sc == null) return Vector2Int.zero; // null 체크
+
+        ShipData data = sc.GetData();
+        if (data == null) return Vector2Int.zero; // null 체크
+
+        int size = data.Size;
         int centerIndex = (size - 1) / 2;
 
+        if (ship.transform.childCount <= centerIndex)
+            return new Vector2Int(
+                Mathf.RoundToInt(ship.transform.position.x),
+                Mathf.RoundToInt(ship.transform.position.z));
+
         Transform centerCell = ship.transform.GetChild(centerIndex);
+        if (centerCell == null) return Vector2Int.zero; // null 체크
+
         return new Vector2Int(
             Mathf.RoundToInt(centerCell.position.x),
             Mathf.RoundToInt(centerCell.position.z));
