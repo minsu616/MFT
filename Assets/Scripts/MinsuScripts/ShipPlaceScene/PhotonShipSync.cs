@@ -26,6 +26,13 @@ public class PhotonShipSync : MonoBehaviourPunCallbacks, IOnEventCallback
     // 배치 완료 버튼 눌렀을 때 호출
     public void SendShipPlacement()
     {
+        if (!PhotonNetwork.InRoom)
+        {
+            Debug.Log("싱글 테스트 모드 - 바로 Battle 씬으로 이동");
+            UnityEngine.SceneManagement.SceneManager.LoadScene("Battle");
+            return;
+        }
+
         List<ShipInfo> myFleet = GameData.Instance.myFleet;
 
         // 직렬화 (Photon으로 보낼 수 있는 형태로 변환)

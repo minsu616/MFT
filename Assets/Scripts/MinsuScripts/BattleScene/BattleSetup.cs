@@ -1,5 +1,6 @@
-using UnityEngine;
 using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
 
 public class BattleSetup : MonoBehaviour
 {
@@ -9,6 +10,9 @@ public class BattleSetup : MonoBehaviour
 
     private List<GameObject> myShips = new List<GameObject>();
     private List<GameObject> enemyShips = new List<GameObject>();
+
+    [Header("폰트")]
+    public TMP_FontAsset koreanFont;
 
 
 
@@ -141,14 +145,16 @@ public class BattleSetup : MonoBehaviour
         {
             GameObject hpBarObj = new GameObject("HPBar");
             hpBarObj.transform.parent = shipParent.transform;
-            hpBarObj.AddComponent<HPBar>();
+            HPBar hpBarComp = hpBarObj.AddComponent<HPBar>();
+            hpBarComp.koreanFont = koreanFont;
         }
 
         if (shipName.StartsWith("Enemy_")) //적 함선 HP바
         {
             GameObject hpBarObj = new GameObject("HPBar");
             hpBarObj.transform.parent = shipParent.transform;
-            HPBar hpBar = hpBarObj.AddComponent<HPBar>();
+            HPBar hpBarComp = hpBarObj.AddComponent<HPBar>();
+            hpBarComp.koreanFont = koreanFont;
             // 처음엔 숨기기 (Fog of War)
             hpBarObj.SetActive(false);
         }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 
 public class HPBar : MonoBehaviour
 {
@@ -11,6 +12,9 @@ public class HPBar : MonoBehaviour
     private ShipController shipController;
     private Camera mainCamera;
     private float barWidth;           // 함선 크기에 따라 자동 설정
+
+    [Header("폰트")]
+    public TMP_FontAsset koreanFont;
 
     void Start()
     {
@@ -25,6 +29,24 @@ public class HPBar : MonoBehaviour
 
     void CreateHPBar()
     {
+        GameObject nameObj = new GameObject("ShipNameText");
+        nameObj.transform.parent = this.transform;
+
+        TextMeshPro tmp = nameObj.AddComponent<TextMeshPro>();
+        
+        if (koreanFont != null)
+            tmp.font = koreanFont;
+
+        tmp.text = shipController.GetData().ShipName;
+        tmp.fontSize = 2f;
+        tmp.color = Color.white;
+        tmp.alignment = TextAlignmentOptions.Right;
+        tmp.rectTransform.sizeDelta = new Vector2(3f, 0.5f);
+
+        // HP바 왼쪽에 배치
+        nameObj.transform.localPosition = new Vector3(
+            -(barWidth / 2) - 1.8f, 0, -0.01f);
+
         // 배경 바 (회색)
         bgBar = GameObject.CreatePrimitive(PrimitiveType.Cube);
         bgBar.name = "HPBar_BG";
