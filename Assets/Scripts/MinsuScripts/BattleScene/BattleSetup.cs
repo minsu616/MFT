@@ -118,7 +118,11 @@ public class BattleSetup : MonoBehaviour
 
             // 상대 배 숨기기
             foreach (Transform cell in ship.transform)
-                cell.GetComponent<Renderer>().enabled = false;
+            {
+                if (cell.name == "HPBar") continue; // HPBar 제외
+                Renderer rend = cell.GetComponent<Renderer>();
+                if (rend != null) rend.enabled = false;
+            }
 
             enemyShips.Add(ship);
         }
