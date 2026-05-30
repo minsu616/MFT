@@ -203,30 +203,39 @@ public class ShipSelector : MonoBehaviour
 
     IEnumerator ExecuteMoveCoroutine()
     {
+        // 이동 데이터 미리 저장
+        List<ShipMoveData> moveDataList = new List<ShipMoveData>();
+        foreach (ShipCommand cmd in commandList)
+        {
+            if (cmd.hasMoveCommand)
+            {
+                moveDataList.Add(new ShipMoveData
+                {
+                    shipName = cmd.ship.name,
+                    targetX = cmd.moveTarget.x,
+                    targetZ = cmd.moveTarget.y,
+                    isHorizontal = cmd.isHorizontal
+                });
+            }
+        }
+
         foreach (ShipCommand cmd in commandList)
         {
             if (cmd.hasMoveCommand)
             {
                 ShipController sc = cmd.ship.GetComponent<ShipController>();
                 int size = sc.GetData().Size;
-
-                // 현재 위치 (중앙 셀 기준)
                 int centerIndex = (size - 1) / 2;
                 Vector3 currentPos = cmd.ship.transform.GetChild(centerIndex).position;
-
                 int startX = Mathf.RoundToInt(currentPos.x);
                 int startZ = Mathf.RoundToInt(currentPos.z);
-                int targetX = cmd.moveTarget.x + centerIndex; // 중앙 기준 목표
+                int targetX = cmd.moveTarget.x + centerIndex;
                 int targetZ = cmd.moveTarget.y;
 
-                // X축 이동
                 int stepX = (targetX > startX) ? 1 : -1;
                 for (int x = startX; x != targetX; x += stepX)
                 {
-                    // 부모 이동
                     cmd.ship.transform.position += new Vector3(stepX, 0, 0);
-
-                    // 자식 셀 위치 재정렬
                     for (int i = 0; i < cmd.ship.transform.childCount; i++)
                     {
                         Transform cell = cmd.ship.transform.GetChild(i);
@@ -239,16 +248,13 @@ public class ShipSelector : MonoBehaviour
                                 cmd.ship.transform.position.x, 0.3f,
                                 cmd.ship.transform.position.z + i);
                     }
-
-                    yield return new WaitForSeconds(0.5f); // 0.5초 대기
+                    yield return new WaitForSeconds(0.5f);
                 }
 
-                // Z축 이동
                 int stepZ = (targetZ > startZ) ? 1 : -1;
                 for (int z = startZ; z != targetZ; z += stepZ)
                 {
                     cmd.ship.transform.position += new Vector3(0, 0, stepZ);
-
                     for (int i = 0; i < cmd.ship.transform.childCount; i++)
                     {
                         Transform cell = cmd.ship.transform.GetChild(i);
@@ -261,14 +267,11 @@ public class ShipSelector : MonoBehaviour
                                 cmd.ship.transform.position.x, 0.3f,
                                 cmd.ship.transform.position.z + i);
                     }
-
                     yield return new WaitForSeconds(0.5f);
                 }
 
-                // 최종 위치 확정
                 cmd.ship.transform.position = new Vector3(
                     cmd.moveTarget.x, 0.3f, cmd.moveTarget.y);
-
                 for (int i = 0; i < cmd.ship.transform.childCount; i++)
                 {
                     Transform cell = cmd.ship.transform.GetChild(i);
@@ -278,27 +281,24 @@ public class ShipSelector : MonoBehaviour
                         cell.position = new Vector3(cmd.moveTarget.x, 0.3f, cmd.moveTarget.y + i);
                 }
 
-                // 색상 복구
                 foreach (Transform cell in cmd.ship.transform)
                 {
                     if (cell.name == "HPBar") continue;
                     cell.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 0.2f);
                 }
-
                 Debug.Log($"{sc.GetData().ShipName} 이동 완료! → ({cmd.moveTarget.x}, {cmd.moveTarget.y})");
             }
         }
 
         commandList.Clear();
 
-        // 이동 완료 후 하이라이트 초기화
         AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
         attackSystem.ClearHighlightsPublic();
 
-        // 이동 후 FogOfWar 강제 업데이트
-        FindObjectOfType<FogOfWar>().ForceUpdate();
+        // 이동 데이터 상대방에게 전송
+        FindObjectOfType<PhotonBattleSync>().SendMoveData(moveDataList);
 
-        // 이동 완료 후 턴 진행 (TurnManager에 알려줌)
+        FindObjectOfType<FogOfWar>().ForceUpdate();
         FindObjectOfType<TurnManager>().OnMoveComplete();
     }
 

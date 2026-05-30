@@ -256,17 +256,16 @@ public class AttackSystem : MonoBehaviour
     }
 
     void LaunchMissile(
-        GameObject attacker,
-        GameObject targetEnemy,
-        Vector2Int attackCoord,
-        int damage,
-        ShipController.ShipType shipType)
+    GameObject attacker,
+    GameObject targetEnemy,
+    Vector2Int attackCoord,
+    int damage,
+    ShipController.ShipType shipType)
     {
         Vector2Int shipCoord = GetShipCenterCoord(attacker);
         Vector3 spawnPos = new Vector3(shipCoord.x, 1.5f, shipCoord.y);
         Vector3 targetPos = new Vector3(attackCoord.x, 0f, attackCoord.y);
 
-        // MissileFactory로 함선 타입별 발사체 생성
         GameObject missileObj = MissileFactory.CreateMissile(shipType);
         missileObj.transform.position = spawnPos;
 
@@ -284,6 +283,13 @@ public class AttackSystem : MonoBehaviour
                 ShipController enemySC = enemy.GetComponent<ShipController>();
                 enemySC.TakeDamage(m.damage);
                 Debug.Log($"데미지: {m.damage} 남은HP: {enemySC.GetData().CurrentHP}");
+
+                // ✅ 공격 데이터 상대방에게 전송
+                FindObjectOfType<PhotonBattleSync>().SendAttackData(
+                    attacker.name,
+                    attackCoord.x,
+                    attackCoord.y,
+                    m.damage);
             }
         };
 
