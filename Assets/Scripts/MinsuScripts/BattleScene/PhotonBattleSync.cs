@@ -152,8 +152,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
 
             for (int i = 0; i < names.Length; i++)
             {
-                string shipName = "My_" + names[i]
-                    .Replace("Enemy_", ""); // 상대방의 My_ = 내 화면의 Enemy_
+                string shipName = names[i].Replace("My_", "Enemy_");
 
                 int targetX = data[i * 4 + 0];
                 int targetZ = data[i * 4 + 1];
@@ -185,6 +184,9 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
     // ──────────────────────────────────────────────
     void MoveEnemyShip(string shipName, int targetX, int targetZ, bool isHorizontal)
     {
+        // 상대방의 My_ → 내 화면의 Enemy_ 로 변환
+        string enemyShipName = shipName.Replace("My_", "Enemy_");
+
         GameObject enemyShip = GameObject.Find(shipName);
         if (enemyShip == null)
         {
