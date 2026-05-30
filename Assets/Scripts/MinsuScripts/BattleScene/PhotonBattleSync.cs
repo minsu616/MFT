@@ -2,14 +2,15 @@ using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
+using System.Collections;
 using System.Collections.Generic;
 
 public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
 {
     // 이벤트 코드
-    const byte READY_EVENT = 10;        // 명령 완료
-    const byte MOVE_EVENT = 11;         // 이동 데이터
-    const byte ATTACK_EVENT = 12;       // 공격 데이터
+    const byte READY_EVENT = 10;
+    const byte MOVE_EVENT = 11;
+    const byte ATTACK_EVENT = 12;
 
     private TurnManager turnManager;
     private ShipSelector shipSelector;
@@ -40,11 +41,8 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
     // ──────────────────────────────────────────────
     // 1. 턴 동기화
     // ──────────────────────────────────────────────
-
-    // 명령 완료 버튼 눌렀을 때 호출
     public void SendReady()
     {
-        // 싱글 테스트면 그냥 다음 단계로
         if (!PhotonNetwork.InRoom)
         {
             turnManager.EndCommandPhase();
@@ -78,13 +76,10 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
     // ──────────────────────────────────────────────
     // 2. 이동 동기화
     // ──────────────────────────────────────────────
-
-    // 이동 명령 상대방에게 전송
     public void SendMoveData(List<ShipMoveData> moveDataList)
     {
         if (!PhotonNetwork.InRoom) return;
 
-        // 직렬화: [함선이름길이, 함선이름, x, z, isHorizontal]
         int[] data = new int[moveDataList.Count * 4];
         string[] names = new string[moveDataList.Count];
 
@@ -112,8 +107,6 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
     // ──────────────────────────────────────────────
     // 3. 공격 동기화
     // ──────────────────────────────────────────────
-
-    // 공격 데이터 상대방에게 전송
     public void SendAttackData(string attackerName, int attackX, int attackZ, int damage)
     {
         if (!PhotonNetwork.InRoom) return;
@@ -153,12 +146,10 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             for (int i = 0; i < names.Length; i++)
             {
                 string shipName = names[i].Replace("My_", "Enemy_");
-
                 int targetX = data[i * 4 + 0];
                 int targetZ = data[i * 4 + 1];
                 bool isHorizontal = data[i * 4 + 2] == 1;
 
-                // 적 함선 이동
                 MoveEnemyShip(shipName, targetX, targetZ, isHorizontal);
             }
             Debug.Log("상대방 이동 데이터 수신!");
@@ -173,20 +164,63 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             int attackZ = (int)data[2];
             int damage = (int)data[3];
 
-            // 내 함선 중 해당 좌표에 있는 함선에 데미지
-            ApplyDamageToMyShip(attackX, attackZ, damage);
             Debug.Log($"상대방 공격 수신! 좌표:({attackX},{attackZ}) 데미지:{damage}");
+
+            // 미사일 모션 후 데미지 적용
+            StartCoroutine(ReceiveAttack(attackX, attackZ, damage));
         }
     }
 
     // ──────────────────────────────────────────────
-    // 적 함선 이동 적용
+    // 공격 수신 처리
+    // ──────────────────────────────────────────────
+    IEnumerator ReceiveAttack(int attackX, int attackZ, int damage)
+    {
+        List<GameObject> enemyShips = battleSetup.GetEnemyShips();
+        GameObject attacker = null;
+
+        foreach (GameObject ship in enemyShips)
+        {
+            if (ship == null || !ship.activeSelf) continue;
+            attacker = ship;
+            break;
+        }
+
+        if (attacker != null)
+        {
+            ShipController sc = attacker.GetComponent<ShipController>();
+            Vector3 spawnPos = new Vector3(
+                attacker.transform.position.x, 1.5f,
+                attacker.transform.position.z);
+            Vector3 targetPos = new Vector3(attackX, 0f, attackZ);
+
+            GameObject missileObj = MissileFactory.CreateMissile(sc.shipType);
+            missileObj.transform.position = spawnPos;
+
+            Missile missile = missileObj.GetComponent<Missile>();
+            missile.damage = damage;
+            missile.attackCount = 1;
+
+            missile.OnArrived += (m) =>
+            {
+                ApplyDamageToMyShip(attackX, attackZ, damage);
+            };
+
+            missile.Launch(spawnPos, targetPos);
+        }
+        else
+        {
+            ApplyDamageToMyShip(attackX, attackZ, damage);
+        }
+
+        yield return null;
+    }
+
+    // ──────────────────────────────────────────────
+    // 적 함선 이동
     // ──────────────────────────────────────────────
     void MoveEnemyShip(string shipName, int targetX, int targetZ, bool isHorizontal)
     {
-        // 상대방의 My_ → 내 화면의 Enemy_ 로 변환
-        string enemyShipName = shipName.Replace("My_", "Enemy_");
-
         GameObject enemyShip = GameObject.Find(shipName);
         if (enemyShip == null)
         {
@@ -194,23 +228,80 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             return;
         }
 
+        StartCoroutine(MoveEnemyShipCoroutine(enemyShip, targetX, targetZ, isHorizontal));
+    }
+
+    IEnumerator MoveEnemyShipCoroutine(GameObject enemyShip, int targetX, int targetZ, bool isHorizontal)
+    {
+        WaitForSeconds wait = new WaitForSeconds(0.5f);
+
         ShipController sc = enemyShip.GetComponent<ShipController>();
         int size = sc.GetData().Size;
+        int centerIndex = (size - 1) / 2;
 
+        Transform centerCell = enemyShip.transform.GetChild(centerIndex);
+        int startX = Mathf.RoundToInt(centerCell.position.x);
+        int startZ = Mathf.RoundToInt(centerCell.position.z);
+        int endX = targetX + centerIndex;
+        int endZ = targetZ;
+
+        // X축 이동
+        int stepX = endX > startX ? 1 : -1;
+        for (int x = startX; x != endX; x += stepX)
+        {
+            enemyShip.transform.position += new Vector3(stepX, 0, 0);
+
+            for (int i = 0; i < enemyShip.transform.childCount; i++)
+            {
+                Transform cell = enemyShip.transform.GetChild(i);
+                if (cell.name == "HPBar") continue;
+                if (isHorizontal)
+                    cell.position = new Vector3(
+                        enemyShip.transform.position.x + i, 0.3f,
+                        enemyShip.transform.position.z);
+                else
+                    cell.position = new Vector3(
+                        enemyShip.transform.position.x, 0.3f,
+                        enemyShip.transform.position.z + i);
+            }
+            yield return wait;
+        }
+
+        // Z축 이동
+        int stepZ = endZ > startZ ? 1 : -1;
+        for (int z = startZ; z != endZ; z += stepZ)
+        {
+            enemyShip.transform.position += new Vector3(0, 0, stepZ);
+
+            for (int i = 0; i < enemyShip.transform.childCount; i++)
+            {
+                Transform cell = enemyShip.transform.GetChild(i);
+                if (cell.name == "HPBar") continue;
+                if (isHorizontal)
+                    cell.position = new Vector3(
+                        enemyShip.transform.position.x + i, 0.3f,
+                        enemyShip.transform.position.z);
+                else
+                    cell.position = new Vector3(
+                        enemyShip.transform.position.x, 0.3f,
+                        enemyShip.transform.position.z + i);
+            }
+            yield return wait;
+        }
+
+        // 최종 위치 확정
         enemyShip.transform.position = new Vector3(targetX, 0.3f, targetZ);
-
         for (int i = 0; i < enemyShip.transform.childCount; i++)
         {
             Transform cell = enemyShip.transform.GetChild(i);
             if (cell.name == "HPBar") continue;
-
             if (isHorizontal)
                 cell.position = new Vector3(targetX + i, 0.3f, targetZ);
             else
                 cell.position = new Vector3(targetX, 0.3f, targetZ + i);
         }
 
-        Debug.Log($"{shipName} 이동 완료! → ({targetX},{targetZ})");
+        Debug.Log($"{enemyShip.name} 이동 완료! → ({targetX},{targetZ})");
     }
 
     // ──────────────────────────────────────────────
@@ -232,11 +323,11 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             int shipX = Mathf.RoundToInt(centerCell.position.x);
             int shipZ = Mathf.RoundToInt(centerCell.position.z);
 
-            // 공격 좌표 근처에 내 함선 있으면 데미지
             int distX = Mathf.Abs(shipX - attackX);
             int distZ = Mathf.Abs(shipZ - attackZ);
 
-            if (distX <= size && distZ <= size)
+            // 범위 체크 수정
+            if (distX <= 1 && distZ <= 1)
             {
                 sc.TakeDamage(damage);
                 Debug.Log($"내 {sc.GetData().ShipName} 피격! 데미지:{damage} 남은HP:{sc.GetData().CurrentHP}");
