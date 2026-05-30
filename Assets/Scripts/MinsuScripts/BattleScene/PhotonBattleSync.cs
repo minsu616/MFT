@@ -7,7 +7,6 @@ using System.Collections.Generic;
 
 public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
 {
-    // 이벤트 코드
     const byte READY_EVENT = 10;
     const byte MOVE_EVENT = 11;
     const byte ATTACK_EVENT = 12;
@@ -164,27 +163,21 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             int attackZ = (int)data[2];
             int damage = (int)data[3];
 
-            Debug.Log($"상대방 공격 수신! 좌표:({attackX},{attackZ}) 데미지:{damage}");
+            Debug.Log($"상대방 공격 수신! 공격함선:{attackerName} 좌표:({attackX},{attackZ}) 데미지:{damage}");
 
-            // 미사일 모션 후 데미지 적용
-            StartCoroutine(ReceiveAttack(attackX, attackZ, damage));
+            // attackerName 추가
+            StartCoroutine(ReceiveAttack(attackerName, attackX, attackZ, damage));
         }
     }
 
     // ──────────────────────────────────────────────
     // 공격 수신 처리
     // ──────────────────────────────────────────────
-    IEnumerator ReceiveAttack(int attackX, int attackZ, int damage)
+    IEnumerator ReceiveAttack(string attackerName, int attackX, int attackZ, int damage)
     {
-        List<GameObject> enemyShips = battleSetup.GetEnemyShips();
-        GameObject attacker = null;
-
-        foreach (GameObject ship in enemyShips)
-        {
-            if (ship == null || !ship.activeSelf) continue;
-            attacker = ship;
-            break;
-        }
+        // 함선 이름으로 정확한 적 함선 찾기
+        string enemyShipName = attackerName.Replace("My_", "Enemy_");
+        GameObject attacker = GameObject.Find(enemyShipName);
 
         if (attacker != null)
         {
@@ -210,6 +203,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         }
         else
         {
+            Debug.Log($"공격한 적 함선 못찾음: {enemyShipName} 바로 데미지 적용");
             ApplyDamageToMyShip(attackX, attackZ, damage);
         }
 
@@ -326,7 +320,6 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             int distX = Mathf.Abs(shipX - attackX);
             int distZ = Mathf.Abs(shipZ - attackZ);
 
-            // 범위 체크 수정
             if (distX <= 1 && distZ <= 1)
             {
                 sc.TakeDamage(damage);
