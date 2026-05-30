@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -38,6 +39,16 @@ public class BattleSetup : MonoBehaviour
 
         SpawnMyFleet();
         SpawnEnemyFleet();
+
+        StartCoroutine(InitFogOfWar());
+    }
+
+    IEnumerator InitFogOfWar()
+    {
+        yield return null;
+        FogOfWar fogOfWar = FindObjectOfType<FogOfWar>();
+        if (fogOfWar != null)
+            fogOfWar.ForceUpdate();
     }
 
     //테스트용 적 함선 생성 코드 start
