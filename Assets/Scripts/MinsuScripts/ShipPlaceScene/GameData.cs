@@ -18,6 +18,8 @@ public class GameData : MonoBehaviour
     public List<ShipInfo> myFleet = new List<ShipInfo>(); // 내 함선 데이터
     public List<ShipInfo> enemyFleet = new List<ShipInfo>();//적 함선 데이터
 
+    public bool isVictory = false;
+
     void Awake()
     {
         if (Instance == null)

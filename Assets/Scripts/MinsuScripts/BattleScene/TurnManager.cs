@@ -75,6 +75,9 @@ public class TurnManager : MonoBehaviour
     public void OnAttackComplete()
     {
         Debug.Log("공격 완료! 턴 종료");
+
+        FindObjectOfType<VictoryManager>().CheckVictoryCondition();
+
         EndTurn();
     }
 
