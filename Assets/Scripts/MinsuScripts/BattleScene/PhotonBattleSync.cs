@@ -10,6 +10,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
     const byte READY_EVENT = 10;
     const byte MOVE_EVENT = 11;
     const byte ATTACK_EVENT = 12;
+    const byte GAME_OVER_EVENT = 13; // 추가
 
     private TurnManager turnManager;
     private ShipSelector shipSelector;
@@ -122,6 +123,21 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         Debug.Log($"공격 데이터 전송! {attackerName} → ({attackX},{attackZ})");
     }
 
+    // 4. 승리/패배 동기화
+    public void SendGameOver()
+    {
+        if (!PhotonNetwork.InRoom) return;
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+        PhotonNetwork.RaiseEvent(GAME_OVER_EVENT, null, options,
+            SendOptions.SendReliable);
+
+        Debug.Log("상대방에게 패배 전송!");
+    }
+
     // ──────────────────────────────────────────────
     // 이벤트 수신
     // ──────────────────────────────────────────────
@@ -164,10 +180,23 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             int damage = (int)data[3];
 
             Debug.Log($"상대방 공격 수신! 공격함선:{attackerName} 좌표:({attackX},{attackZ}) 데미지:{damage}");
-
-            // attackerName 추가
             StartCoroutine(ReceiveAttack(attackerName, attackX, attackZ, damage));
         }
+
+        // 상대방 승리 수신 = 내가 패배
+        if (photonEvent.Code == GAME_OVER_EVENT)
+        {
+            Debug.Log("상대방이 승리! 내가 패배!");
+            GameData.Instance.isVictory = false;
+            StartCoroutine(MoveToResult());
+        }
+    }
+
+    // Result 씬으로 이동
+    IEnumerator MoveToResult()
+    {
+        yield return new WaitForSeconds(2f);
+        PhotonNetwork.LoadLevel("Result");
     }
 
     // ──────────────────────────────────────────────
@@ -175,7 +204,6 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
     // ──────────────────────────────────────────────
     IEnumerator ReceiveAttack(string attackerName, int attackX, int attackZ, int damage)
     {
-        // 함선 이름으로 정확한 적 함선 찾기
         string enemyShipName = attackerName.Replace("My_", "Enemy_");
         GameObject attacker = GameObject.Find(enemyShipName);
 
