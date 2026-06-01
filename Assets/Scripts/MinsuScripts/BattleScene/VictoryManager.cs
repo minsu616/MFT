@@ -135,6 +135,9 @@ public class VictoryManager : MonoBehaviour
         {
             Debug.Log("승리!");
             GameData.Instance.isVictory = true;
+
+            // 상대방에게 패배 전송
+            FindObjectOfType<PhotonBattleSync>().SendGameOver();
         }
         else
         {
@@ -144,7 +147,6 @@ public class VictoryManager : MonoBehaviour
 
         yield return new WaitForSeconds(2f);
 
-        // Result 씬으로 이동
         if (PhotonNetwork.InRoom)
             PhotonNetwork.LoadLevel("Result");
         else

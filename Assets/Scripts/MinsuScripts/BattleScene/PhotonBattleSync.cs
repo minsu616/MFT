@@ -10,7 +10,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
     const byte READY_EVENT = 10;
     const byte MOVE_EVENT = 11;
     const byte ATTACK_EVENT = 12;
-    const byte GAME_OVER_EVENT = 13; // 추가
+    const byte GAME_OVER_EVENT = 13;
 
     private TurnManager turnManager;
     private ShipSelector shipSelector;
@@ -38,9 +38,6 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         PhotonNetwork.RemoveCallbackTarget(this);
     }
 
-    // ──────────────────────────────────────────────
-    // 1. 턴 동기화
-    // ──────────────────────────────────────────────
     public void SendReady()
     {
         if (!PhotonNetwork.InRoom)
@@ -73,9 +70,6 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         }
     }
 
-    // ──────────────────────────────────────────────
-    // 2. 이동 동기화
-    // ──────────────────────────────────────────────
     public void SendMoveData(List<ShipMoveData> moveDataList)
     {
         if (!PhotonNetwork.InRoom) return;
@@ -104,14 +98,12 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         Debug.Log("이동 데이터 전송 완료!");
     }
 
-    // ──────────────────────────────────────────────
-    // 3. 공격 동기화
-    // ──────────────────────────────────────────────
-    public void SendAttackData(string attackerName, int attackX, int attackZ, int damage)
+    //  remainHP 추가
+    public void SendAttackData(string attackerName, int attackX, int attackZ, int damage, int remainHP)
     {
         if (!PhotonNetwork.InRoom) return;
 
-        object[] data = new object[] { attackerName, attackX, attackZ, damage };
+        object[] data = new object[] { attackerName, attackX, attackZ, damage, remainHP };
 
         RaiseEventOptions options = new RaiseEventOptions
         {
@@ -120,10 +112,9 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         PhotonNetwork.RaiseEvent(ATTACK_EVENT, data, options,
             SendOptions.SendReliable);
 
-        Debug.Log($"공격 데이터 전송! {attackerName} → ({attackX},{attackZ})");
+        Debug.Log($"공격 데이터 전송! {attackerName} → ({attackX},{attackZ}) 남은HP:{remainHP}");
     }
 
-    // 4. 승리/패배 동기화
     public void SendGameOver()
     {
         if (!PhotonNetwork.InRoom) return;
@@ -138,12 +129,8 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         Debug.Log("상대방에게 패배 전송!");
     }
 
-    // ──────────────────────────────────────────────
-    // 이벤트 수신
-    // ──────────────────────────────────────────────
     public void OnEvent(EventData photonEvent)
     {
-        // 상대방 명령 완료 수신
         if (photonEvent.Code == READY_EVENT)
         {
             enemyReady = true;
@@ -151,7 +138,6 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             CheckBothReady();
         }
 
-        // 상대방 이동 데이터 수신
         if (photonEvent.Code == MOVE_EVENT)
         {
             object[] received = (object[])photonEvent.CustomData;
@@ -164,13 +150,11 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
                 int targetX = data[i * 4 + 0];
                 int targetZ = data[i * 4 + 1];
                 bool isHorizontal = data[i * 4 + 2] == 1;
-
                 MoveEnemyShip(shipName, targetX, targetZ, isHorizontal);
             }
             Debug.Log("상대방 이동 데이터 수신!");
         }
 
-        // 상대방 공격 데이터 수신
         if (photonEvent.Code == ATTACK_EVENT)
         {
             object[] data = (object[])photonEvent.CustomData;
@@ -178,12 +162,12 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             int attackX = (int)data[1];
             int attackZ = (int)data[2];
             int damage = (int)data[3];
+            int remainHP = (int)data[4]; //  remainHP 추가
 
-            Debug.Log($"상대방 공격 수신! 공격함선:{attackerName} 좌표:({attackX},{attackZ}) 데미지:{damage}");
-            StartCoroutine(ReceiveAttack(attackerName, attackX, attackZ, damage));
+            Debug.Log($"상대방 공격 수신! 공격함선:{attackerName} 좌표:({attackX},{attackZ}) 남은HP:{remainHP}");
+            StartCoroutine(ReceiveAttack(attackerName, attackX, attackZ, damage, remainHP));
         }
 
-        // 상대방 승리 수신 = 내가 패배
         if (photonEvent.Code == GAME_OVER_EVENT)
         {
             Debug.Log("상대방이 승리! 내가 패배!");
@@ -192,17 +176,14 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         }
     }
 
-    // Result 씬으로 이동
     IEnumerator MoveToResult()
     {
         yield return new WaitForSeconds(2f);
         PhotonNetwork.LoadLevel("Result");
     }
 
-    // ──────────────────────────────────────────────
-    // 공격 수신 처리
-    // ──────────────────────────────────────────────
-    IEnumerator ReceiveAttack(string attackerName, int attackX, int attackZ, int damage)
+    //  remainHP 추가
+    IEnumerator ReceiveAttack(string attackerName, int attackX, int attackZ, int damage, int remainHP)
     {
         string enemyShipName = attackerName.Replace("My_", "Enemy_");
         GameObject attacker = GameObject.Find(enemyShipName);
@@ -224,7 +205,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
 
             missile.OnArrived += (m) =>
             {
-                ApplyDamageToMyShip(attackX, attackZ, damage);
+                ApplyDamageToMyShip(attackX, attackZ, remainHP); //  remainHP 전달
             };
 
             missile.Launch(spawnPos, targetPos);
@@ -232,15 +213,12 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         else
         {
             Debug.Log($"공격한 적 함선 못찾음: {enemyShipName} 바로 데미지 적용");
-            ApplyDamageToMyShip(attackX, attackZ, damage);
+            ApplyDamageToMyShip(attackX, attackZ, remainHP); //  remainHP 전달
         }
 
         yield return null;
     }
 
-    // ──────────────────────────────────────────────
-    // 적 함선 이동
-    // ──────────────────────────────────────────────
     void MoveEnemyShip(string shipName, int targetX, int targetZ, bool isHorizontal)
     {
         GameObject enemyShip = GameObject.Find(shipName);
@@ -249,7 +227,6 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             Debug.Log($"적 함선 못찾음: {shipName}");
             return;
         }
-
         StartCoroutine(MoveEnemyShipCoroutine(enemyShip, targetX, targetZ, isHorizontal));
     }
 
@@ -267,12 +244,10 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         int endX = targetX + centerIndex;
         int endZ = targetZ;
 
-        // X축 이동
         int stepX = endX > startX ? 1 : -1;
         for (int x = startX; x != endX; x += stepX)
         {
             enemyShip.transform.position += new Vector3(stepX, 0, 0);
-
             for (int i = 0; i < enemyShip.transform.childCount; i++)
             {
                 Transform cell = enemyShip.transform.GetChild(i);
@@ -289,12 +264,10 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             yield return wait;
         }
 
-        // Z축 이동
         int stepZ = endZ > startZ ? 1 : -1;
         for (int z = startZ; z != endZ; z += stepZ)
         {
             enemyShip.transform.position += new Vector3(0, 0, stepZ);
-
             for (int i = 0; i < enemyShip.transform.childCount; i++)
             {
                 Transform cell = enemyShip.transform.GetChild(i);
@@ -311,7 +284,6 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             yield return wait;
         }
 
-        // 최종 위치 확정
         enemyShip.transform.position = new Vector3(targetX, 0.3f, targetZ);
         for (int i = 0; i < enemyShip.transform.childCount; i++)
         {
@@ -326,10 +298,8 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         Debug.Log($"{enemyShip.name} 이동 완료! → ({targetX},{targetZ})");
     }
 
-    // ──────────────────────────────────────────────
-    // 내 함선에 데미지 적용
-    // ──────────────────────────────────────────────
-    void ApplyDamageToMyShip(int attackX, int attackZ, int damage)
+    //  remainHP로 직접 HP 설정
+    void ApplyDamageToMyShip(int attackX, int attackZ, int remainHP)
     {
         List<GameObject> myShips = battleSetup.GetMyShips();
 
@@ -350,15 +320,25 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
 
             if (distX <= 1 && distZ <= 1)
             {
-                sc.TakeDamage(damage);
-                Debug.Log($"내 {sc.GetData().ShipName} 피격! 데미지:{damage} 남은HP:{sc.GetData().CurrentHP}");
+                //  전송받은 HP로 직접 설정
+                sc.GetData().CurrentHP = remainHP;
+                Debug.Log($"내 {sc.GetData().ShipName} 피격! 남은HP:{remainHP}");
+
+                //  침몰 체크
+                if (remainHP <= 0)
+                {
+                    Debug.Log($"내 {sc.GetData().ShipName} 침몰!");
+                    ship.SetActive(false);
+
+                    //  승리 조건 체크
+                    FindObjectOfType<VictoryManager>().CheckVictoryCondition();
+                }
                 break;
             }
         }
     }
 }
 
-// 이동 데이터 구조체
 [System.Serializable]
 public class ShipMoveData
 {

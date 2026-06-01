@@ -284,12 +284,13 @@ public class AttackSystem : MonoBehaviour
                 enemySC.TakeDamage(m.damage);
                 Debug.Log($"데미지: {m.damage} 남은HP: {enemySC.GetData().CurrentHP}");
 
-                // ✅ 공격 데이터 상대방에게 전송
+                // 공격 데이터 상대방에게 전송
                 FindObjectOfType<PhotonBattleSync>().SendAttackData(
                     attacker.name,
                     attackCoord.x,
                     attackCoord.y,
-                    m.damage);
+                    m.damage,
+                    enemySC.GetData().CurrentHP);
             }
         };
 
