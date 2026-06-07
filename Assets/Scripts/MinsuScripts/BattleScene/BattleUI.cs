@@ -62,6 +62,6 @@ public class BattleUI : MonoBehaviour
     // 명령 완료 버튼 클릭
     void OnCommandComplete()
     {
-        turnManager.OnCommandComplete();
+        FindObjectOfType<PhotonBattleSync>().SendReady();
     }
 }

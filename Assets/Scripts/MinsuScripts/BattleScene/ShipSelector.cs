@@ -1,9 +1,19 @@
-﻿using UnityEngine;
+﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
 public class ShipSelector : MonoBehaviour
 {
-    private ActionButtonUI actionButtonUI; //추가
+    // ActionButtonUI에서 호출용
+    public void ClearHighlightsPublic() => ClearHighlights();
+    public void ShowMoveRangePublic(GameObject ship) => ShowMoveRange(ship);
+
+    private ActionButtonUI actionButtonUI;
+    private ErrorPopup errorPopup;
+    
+    private bool waitingForAttackCoord = false; // 이동 후 공격 좌표 대기 중
+    private Vector2Int pendingMoveCoord;         // 저장된 이동 좌표
+
 
     [Header("색상")]
     public Color selectedColor = new Color(1f, 1f, 0f);
@@ -25,8 +35,8 @@ public class ShipSelector : MonoBehaviour
     void Start()
     {
         turnManager = FindObjectOfType<TurnManager>();
-        actionButtonUI = FindObjectOfType<ActionButtonUI>(); //추가
-
+        actionButtonUI = FindObjectOfType<ActionButtonUI>();
+        errorPopup = FindObjectOfType<ErrorPopup>();
     }
 
     void Update()
@@ -39,6 +49,7 @@ public class ShipSelector : MonoBehaviour
         }
     }
 
+    
     void HandleClick()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -59,6 +70,16 @@ public class ShipSelector : MonoBehaviour
             {
                 SelectShip(target);
             }
+            //  적 함선 클릭시 해당 위치를 타일 클릭으로 처리
+            else if (target.name.StartsWith("Enemy_"))
+            {
+                int ex = Mathf.RoundToInt(target.transform.position.x);
+                int ez = Mathf.RoundToInt(target.transform.position.z);
+
+                GameObject fakeTile = GameObject.Find($"Tile ({ex},{ez})");
+                if (fakeTile != null && selectedShip != null)
+                    HandleTileClick(fakeTile);
+            }
             // 타일 클릭
             else if (target.name.Contains("Tile") && selectedShip != null)
             {
@@ -67,38 +88,40 @@ public class ShipSelector : MonoBehaviour
         }
     }
 
+
     void SelectShip(GameObject ship)
     {
         if (selectedShip != null)
         {
             if (!HasCommand(selectedShip))
             {
-                // 자식 셀들 색상 복구
+                //자식 셀들 색상 복구
                 foreach (Transform cell in selectedShip.transform)
+                {
+                    if (cell.name == "HPBar") continue;
                     cell.GetComponent<Renderer>().material.color = originalShipColor;
+                }
+                    
             }
             ClearHighlights();
         }
 
         selectedShip = ship;
-
-        // 자식 첫번째 셀에서 원래 색상 가져오기
+        //자식 첫번째 셀에서 원래 색상 가져오기
         originalShipColor = ship.transform.GetChild(0).GetComponent<Renderer>().material.color;
 
-        // 자식 셀들 전체 노란색으로
+        //자식셀들 전체 노란색으로
         foreach (Transform cell in ship.transform)
+        {
+            if (cell.name == "HPBar") continue;
             cell.GetComponent<Renderer>().material.color = selectedColor;
-
+        }
+            
         ShipController sc = ship.GetComponent<ShipController>();
         Debug.Log($"{sc.GetData().ShipName} 선택!");
 
-        actionButtonUI.ShowButtons(); //추가
-
-        ShowMoveRange(ship);
-
-        //공격 버튼 누르면 범위 표시
-        AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
-        attackSystem.ShowAttackRange(ship);
+        actionButtonUI.ShowButtons();
+        ShowMoveRange(ship); // 이동범위만 표시 (공격범위 제거)
     }
 
     void ShowMoveRange(GameObject ship)
@@ -109,59 +132,26 @@ public class ShipSelector : MonoBehaviour
         int moveRange = sc.GetData().MoveRange;
         Vector2Int shipCoord = GetShipCoord(ship);
 
-        if (turnManager.CanUse(APManager.MOVE_COST))
-        {
-            for (int x = -moveRange; x <= moveRange; x++)
-            {
-                for (int z = -moveRange; z <= moveRange; z++)
-                {
-                    int tx = shipCoord.x + x;
-                    int tz = shipCoord.y + z;
-                    if (tx < 0 || tx >= 30 || tz < 0 || tz >= 30) continue;
+        if (!turnManager.CanUse(APManager.MOVE_COST)) return;
 
-                    GameObject tile = GameObject.Find($"Tile ({tx},{tz})");
-                    if (tile != null)
-                    {
-                        tile.GetComponent<Renderer>().material.color = moveRangeColor;
-                        highlightedTiles.Add(tile);
-                    }
+        for (int x = -moveRange; x <= moveRange; x++)
+        {
+            for (int z = -moveRange; z <= moveRange; z++)
+            {
+                int tx = shipCoord.x + x;
+                int tz = shipCoord.y + z;
+                if (tx < 0 || tx >= 30 || tz < 0 || tz >= 30) continue;
+
+                GameObject tile = GameObject.Find($"Tile ({tx},{tz})");
+                if (tile != null)
+                {
+                    tile.GetComponent<Renderer>().material.color = moveRangeColor;
+                    highlightedTiles.Add(tile);
                 }
             }
         }
     }
 
-    void HandleTileClick(GameObject tile)
-    {
-        // 이동 버튼 선택됐는지 체크
-        if (!actionButtonUI.moveSelected)
-        {
-            Debug.Log("이동 버튼을 먼저 선택해주세요!");
-            return;
-        }
-
-        if (!turnManager.CanUse(APManager.MOVE_COST))
-        {
-            Debug.Log("AP 부족! 이동 불가");
-            return;
-        }
-
-        string tileName = tile.name.Replace("Tile (", "").Replace(")", "");
-        string[] coords = tileName.Split(',');
-        int x = int.Parse(coords[0]);
-        int z = int.Parse(coords[1]);
-
-        if (!IsInMoveRange(new Vector2Int(x, z)))
-        {
-            Debug.Log("이동 범위 밖입니다!");
-            return;
-        }
-
-        SaveMoveCommand(selectedShip, new Vector2Int(x, z));
-
-        // 이동 명령 저장 후 이동 버튼 해제
-        actionButtonUI.moveSelected = false;
-        actionButtonUI.ShowButtons();
-    }
 
     //  이동 명령 저장
     void SaveMoveCommand(GameObject ship, Vector2Int targetCoord)
@@ -195,7 +185,11 @@ public class ShipSelector : MonoBehaviour
 
         // 자식 셀 전체 주황색으로
         foreach (Transform cell in ship.transform)
+        {
+            if (cell.name == "HPBar") continue;
             cell.GetComponent<Renderer>().material.color = commandedColor;
+        }
+            
 
         Debug.Log($"{sc.GetData().ShipName} 이동 명령 저장! → ({targetCoord.x}, {targetCoord.y}) 남은 AP: {turnManager.GetCurrentAP()}");
         ClearHighlights();
@@ -204,35 +198,110 @@ public class ShipSelector : MonoBehaviour
     // 이동 단계에서 TurnManager가 호출 - 실제 이동 실행
     public void ExecuteMoveCommands()
     {
+        StartCoroutine(ExecuteMoveCoroutine());
+    }
+
+    IEnumerator ExecuteMoveCoroutine()
+    {
+        // 이동 데이터 미리 저장
+        List<ShipMoveData> moveDataList = new List<ShipMoveData>();
+        foreach (ShipCommand cmd in commandList)
+        {
+            if (cmd.hasMoveCommand)
+            {
+                moveDataList.Add(new ShipMoveData
+                {
+                    shipName = cmd.ship.name,
+                    targetX = cmd.moveTarget.x,
+                    targetZ = cmd.moveTarget.y,
+                    isHorizontal = cmd.isHorizontal
+                });
+            }
+        }
+
         foreach (ShipCommand cmd in commandList)
         {
             if (cmd.hasMoveCommand)
             {
                 ShipController sc = cmd.ship.GetComponent<ShipController>();
                 int size = sc.GetData().Size;
+                int centerIndex = (size - 1) / 2;
+                Vector3 currentPos = cmd.ship.transform.GetChild(centerIndex).position;
+                int startX = Mathf.RoundToInt(currentPos.x);
+                int startZ = Mathf.RoundToInt(currentPos.z);
+                int targetX = cmd.moveTarget.x;
+                int targetZ = cmd.moveTarget.y;
 
-                // 부모 위치 이동
+                Debug.Log($"확이느ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡstartX:{startX} targetX:{targetX} startZ:{startZ} targetZ:{targetZ}");
+
+                int stepX = (targetX > startX) ? 1 : (targetX < startX) ? -1 : 0;
+                for (int x = startX; x != targetX; x += stepX)
+                {
+                    cmd.ship.transform.position += new Vector3(stepX, 0, 0);
+                    for (int i = 0; i < cmd.ship.transform.childCount; i++)
+                    {
+                        Transform cell = cmd.ship.transform.GetChild(i);
+                        if (cmd.isHorizontal)
+                            cell.position = new Vector3(
+                                cmd.ship.transform.position.x + i, 0.3f,
+                                cmd.ship.transform.position.z);
+                        else
+                            cell.position = new Vector3(
+                                cmd.ship.transform.position.x, 0.3f,
+                                cmd.ship.transform.position.z + i);
+                    }
+                    yield return new WaitForSeconds(0.5f);
+                }
+
+                int stepZ = (targetZ > startZ) ? 1 : (targetZ < startZ) ? -1 : 0;
+                for (int z = startZ; z != targetZ; z += stepZ)
+                {
+                    cmd.ship.transform.position += new Vector3(0, 0, stepZ);
+                    for (int i = 0; i < cmd.ship.transform.childCount; i++)
+                    {
+                        Transform cell = cmd.ship.transform.GetChild(i);
+                        if (cmd.isHorizontal)
+                            cell.position = new Vector3(
+                                cmd.ship.transform.position.x + i, 0.3f,
+                                cmd.ship.transform.position.z);
+                        else
+                            cell.position = new Vector3(
+                                cmd.ship.transform.position.x, 0.3f,
+                                cmd.ship.transform.position.z + i);
+                    }
+                    yield return new WaitForSeconds(0.5f);
+                }
+
                 cmd.ship.transform.position = new Vector3(
-                    cmd.moveTarget.x, 0.3f, cmd.moveTarget.y);
-
-                // 자식 셀 위치 재정렬
+                    cmd.moveTarget.x - centerIndex, 0.3f, cmd.moveTarget.y);
                 for (int i = 0; i < cmd.ship.transform.childCount; i++)
                 {
                     Transform cell = cmd.ship.transform.GetChild(i);
                     if (cmd.isHorizontal)
-                        cell.position = new Vector3(cmd.moveTarget.x + i, 0.3f, cmd.moveTarget.y);
+                        cell.position = new Vector3(cmd.moveTarget.x - centerIndex + i, 0.3f, cmd.moveTarget.y);
                     else
                         cell.position = new Vector3(cmd.moveTarget.x, 0.3f, cmd.moveTarget.y + i);
                 }
 
-                // 자식 셀 초록색으로 복구
                 foreach (Transform cell in cmd.ship.transform)
+                {
+                    if (cell.name == "HPBar") continue;
                     cell.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 0.2f);
-
-                Debug.Log($"{sc.GetData().ShipName} 이동 실행! → ({cmd.moveTarget.x}, {cmd.moveTarget.y})");
+                }
+                Debug.Log($"{sc.GetData().ShipName} 이동 완료! → ({cmd.moveTarget.x}, {cmd.moveTarget.y})");
             }
         }
+
         commandList.Clear();
+
+        AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
+        attackSystem.ClearHighlightsPublic();
+
+        // 이동 데이터 상대방에게 전송
+        FindObjectOfType<PhotonBattleSync>().SendMoveData(moveDataList);
+
+        FindObjectOfType<FogOfWar>().ForceUpdate();
+        FindObjectOfType<TurnManager>().OnMoveComplete();
     }
 
     bool HasCommand(GameObject ship)
@@ -291,4 +360,200 @@ public class ShipSelector : MonoBehaviour
     }
 
     public GameObject GetSelectedShip() => selectedShip;
+
+
+
+    // 해당 좌표에 함선이 있는지 체크
+    // 이동 가능한 최종 좌표 반환
+    // 내 함선 있으면 null, 적 함선 있으면 바로 앞 칸 반환
+    Vector2Int? GetValidMoveCoord(GameObject ship, Vector2Int targetCoord)
+    {
+        Vector2Int currentCoord = GetShipCoord(ship);
+
+        int startX = currentCoord.x;
+        int startZ = currentCoord.y;
+        int endX = targetCoord.x;
+        int endZ = targetCoord.y;
+
+        // X축 경로 체크
+        int stepX = endX > startX ? 1 : endX < startX ? -1 : 0;
+        if (stepX != 0)
+        {
+            for (int x = startX + stepX; x != endX + stepX; x += stepX)
+            {
+                Vector2Int checkCoord = new Vector2Int(x, startZ);
+
+                if (IsMyShipAt(checkCoord, ship))
+                    return null; // ErrorPopup 제거
+
+                if (IsEnemyShipAt(checkCoord))
+                {
+                    Vector2Int stopCoord = new Vector2Int(x - stepX, startZ);
+                    return stopCoord;
+                }
+            }
+        }
+
+        // Z축 경로 체크
+        int stepZ = endZ > startZ ? 1 : endZ < startZ ? -1 : 0;
+        if (stepZ != 0)
+        {
+            for (int z = startZ + stepZ; z != endZ + stepZ; z += stepZ)
+            {
+                Vector2Int checkCoord = new Vector2Int(endX, z);
+
+                if (IsMyShipAt(checkCoord, ship))
+                    return null; //  ErrorPopup 제거
+
+                if (IsEnemyShipAt(checkCoord))
+                {
+                    Vector2Int stopCoord = new Vector2Int(endX, z - stepZ);
+                    return stopCoord;
+                }
+            }
+        }
+
+        return targetCoord;
+    }
+
+    // 해당 좌표에 내 함선 있는지 체크
+    bool IsMyShipAt(Vector2Int coord, GameObject ignoreShip)
+    {
+        BattleSetup battleSetup = FindObjectOfType<BattleSetup>();
+        foreach (GameObject ship in battleSetup.GetMyShips())
+        {
+            if (ship == ignoreShip || !ship.activeSelf) continue;
+            ShipController sc = ship.GetComponent<ShipController>();
+            int size = sc.GetData().Size;
+            for (int i = 0; i < size; i++)
+            {
+                Transform cell = ship.transform.GetChild(i);
+                int cx = Mathf.RoundToInt(cell.position.x);
+                int cz = Mathf.RoundToInt(cell.position.z);
+                if (cx == coord.x && cz == coord.y) return true;
+            }
+        }
+        return false;
+    }
+
+    // 해당 좌표에 적 함선 있는지 체크
+    bool IsEnemyShipAt(Vector2Int coord)
+    {
+        BattleSetup battleSetup = FindObjectOfType<BattleSetup>();
+        foreach (GameObject ship in battleSetup.GetEnemyShips())
+        {
+            if (!ship.activeSelf) continue;
+            ShipController sc = ship.GetComponent<ShipController>();
+            int size = sc.GetData().Size;
+            for (int i = 0; i < size; i++)
+            {
+                Transform cell = ship.transform.GetChild(i);
+                int cx = Mathf.RoundToInt(cell.position.x);
+                int cz = Mathf.RoundToInt(cell.position.z);
+                if (cx == coord.x && cz == coord.y) return true;
+            }
+        }
+        return false;
+    }
+
+    void HandleTileClick(GameObject tile)
+    {
+        string tileName = tile.name.Replace("Tile (", "").Replace(")", "");
+        string[] coords = tileName.Split(',');
+        int x = int.Parse(coords[0]);
+        int z = int.Parse(coords[1]);
+        Vector2Int clickCoord = new Vector2Int(x, z);
+
+        // 이동+공격 모드: 공격 좌표 대기 중
+        if (waitingForAttackCoord)
+        {
+            AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
+            attackSystem.SaveAttackCommandExternal(selectedShip, clickCoord, 1, pendingMoveCoord);
+
+            Debug.Log($"이동+공격 명령 저장 완료!");
+            waitingForAttackCoord = false;
+
+            // AP 소모 (이동1 + 공격3 = 4AP)
+            turnManager.UseAP(APManager.ATTACK_COST);
+
+            actionButtonUI.attackSelected = false;
+            actionButtonUI.ShowButtons();
+            ClearHighlights();
+            return;
+        }
+
+        // 이동만 선택된 경우
+        if (actionButtonUI.moveSelected && !actionButtonUI.attackSelected)
+        {
+            if (!turnManager.CanUse(APManager.MOVE_COST))
+            {
+                Debug.Log("AP 부족! 이동 불가");
+                return;
+            }
+
+            // IsInMoveRange 제거! 경로 체크 먼저
+            Vector2Int? validCoord = GetValidMoveCoord(selectedShip, clickCoord);
+            if (validCoord == null)
+            {
+                FindObjectOfType<ErrorPopup>().ShowError();
+                return;
+            }
+            // 실제 정지 좌표가 이동범위 안인지만 체크
+            if (!IsInMoveRange(validCoord.Value))
+            {
+                Debug.Log("이동 범위 밖입니다!");
+                return;
+            }
+
+            SaveMoveCommand(selectedShip, validCoord.Value);
+            turnManager.UseAP(APManager.MOVE_COST);
+            actionButtonUI.moveSelected = false;
+            actionButtonUI.ShowButtons();
+            return;
+        }
+
+        // 이동 + 공격 동시 선택된 경우
+        if (actionButtonUI.moveSelected && actionButtonUI.attackSelected)
+        {
+            if (!turnManager.CanUse(APManager.MOVE_COST))
+            {
+                Debug.Log("AP 부족! 이동 불가");
+                return;
+            }
+
+            // IsInMoveRange 제거! 경로 체크 먼저
+            Vector2Int? validCoord = GetValidMoveCoord(selectedShip, clickCoord);
+            if (validCoord == null)
+            {
+                FindObjectOfType<ErrorPopup>().ShowError();
+                return;
+            }
+
+            // 실제 정지 좌표가 이동범위 안인지만 체크
+            if (!IsInMoveRange(validCoord.Value))
+            {
+                Debug.Log("이동 범위 밖입니다!");
+                return;
+            }
+
+            pendingMoveCoord = validCoord.Value;
+            SaveMoveCommand(selectedShip, validCoord.Value);
+            actionButtonUI.moveSelected = false;
+
+            AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
+            ClearHighlights();
+            attackSystem.ShowAttackRangeFromCoord(selectedShip, validCoord.Value);
+            waitingForAttackCoord = true;
+            Debug.Log("이동 좌표 저장! 이제 공격할 타일을 선택하세요.");
+            return;
+        }
+
+        // 공격만 선택된 경우
+        if (!actionButtonUI.moveSelected && actionButtonUI.attackSelected)
+        {
+            AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
+            attackSystem.TryAttackPublic(clickCoord);
+            return;
+        }
+    }
 }

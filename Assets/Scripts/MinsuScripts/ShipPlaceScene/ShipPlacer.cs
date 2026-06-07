@@ -195,7 +195,8 @@ public class ShipPlacer : MonoBehaviour
     {
         if (completeButton != null)
             completeButton.SetActive(true); // 버튼 활성화
-        Debug.Log("배치 완료 버튼 활성화!");
+
+        FindObjectOfType<PhotonShipSync>().SendShipPlacement();
     }
 
     // 맵 범위 체크

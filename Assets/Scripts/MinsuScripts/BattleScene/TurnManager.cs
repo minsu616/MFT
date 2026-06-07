@@ -2,6 +2,10 @@ using UnityEngine;
 
 public class TurnManager : MonoBehaviour
 {
+
+    private ShipSelector shipSelector;
+    private AttackSystem attackSystem;
+
     // 턴 단계
     public enum Phase
     {
@@ -26,6 +30,8 @@ public class TurnManager : MonoBehaviour
     void Start()
     {
         apManager = GetComponent<APManager>();
+        shipSelector = FindObjectOfType<ShipSelector>(); // 추가
+        attackSystem = FindObjectOfType<AttackSystem>(); // 추가
         StartGame();
     }
 
@@ -57,13 +63,22 @@ public class TurnManager : MonoBehaviour
     {
         currentPhase = Phase.Move;
         Debug.Log($"[턴 {turnCount}] 이동 단계 시작!");
-
-        // 실제 이동 실행!
-        ShipSelector shipSelector = FindObjectOfType<ShipSelector>();
         shipSelector.ExecuteMoveCommands();
+    }
 
-        // 이동 완료 후 수행 단계로
+    //  이동 완료 후 ShipSelector가 호출
+    public void OnMoveComplete()
+    {
         StartExecutePhase();
+    }
+
+    public void OnAttackComplete()
+    {
+        Debug.Log("공격 완료! 턴 종료");
+
+        FindObjectOfType<VictoryManager>().CheckVictoryCondition();
+
+        EndTurn();
     }
 
     // ─── 수행 단계 ───
@@ -71,14 +86,7 @@ public class TurnManager : MonoBehaviour
     {
         currentPhase = Phase.Execute;
         Debug.Log($"[턴 {turnCount}] 수행 단계 시작!");
-        // 나중에 공격 애니메이션 끝나면 자동으로 턴 종료
-        
-        //공격 실행 추가
-        AttackSystem attackSystem = FindObjectOfType<AttackSystem>();
         attackSystem.ExecuteAttackCommands();
-
-        // 지금은 바로 턴 종료
-        EndTurn();
     }
 
     // ─── 턴 종료 ───
