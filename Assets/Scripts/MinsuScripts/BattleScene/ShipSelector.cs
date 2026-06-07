@@ -229,10 +229,12 @@ public class ShipSelector : MonoBehaviour
                 Vector3 currentPos = cmd.ship.transform.GetChild(centerIndex).position;
                 int startX = Mathf.RoundToInt(currentPos.x);
                 int startZ = Mathf.RoundToInt(currentPos.z);
-                int targetX = cmd.moveTarget.x + centerIndex;
+                int targetX = cmd.moveTarget.x;
                 int targetZ = cmd.moveTarget.y;
 
-                int stepX = (targetX > startX) ? 1 : -1;
+                Debug.Log($"확이느ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡstartX:{startX} targetX:{targetX} startZ:{startZ} targetZ:{targetZ}");
+
+                int stepX = (targetX > startX) ? 1 : (targetX < startX) ? -1 : 0;
                 for (int x = startX; x != targetX; x += stepX)
                 {
                     cmd.ship.transform.position += new Vector3(stepX, 0, 0);
@@ -251,7 +253,7 @@ public class ShipSelector : MonoBehaviour
                     yield return new WaitForSeconds(0.5f);
                 }
 
-                int stepZ = (targetZ > startZ) ? 1 : -1;
+                int stepZ = (targetZ > startZ) ? 1 : (targetZ < startZ) ? -1 : 0;
                 for (int z = startZ; z != targetZ; z += stepZ)
                 {
                     cmd.ship.transform.position += new Vector3(0, 0, stepZ);
@@ -271,12 +273,12 @@ public class ShipSelector : MonoBehaviour
                 }
 
                 cmd.ship.transform.position = new Vector3(
-                    cmd.moveTarget.x, 0.3f, cmd.moveTarget.y);
+                    cmd.moveTarget.x - centerIndex, 0.3f, cmd.moveTarget.y);
                 for (int i = 0; i < cmd.ship.transform.childCount; i++)
                 {
                     Transform cell = cmd.ship.transform.GetChild(i);
                     if (cmd.isHorizontal)
-                        cell.position = new Vector3(cmd.moveTarget.x + i, 0.3f, cmd.moveTarget.y);
+                        cell.position = new Vector3(cmd.moveTarget.x - centerIndex + i, 0.3f, cmd.moveTarget.y);
                     else
                         cell.position = new Vector3(cmd.moveTarget.x, 0.3f, cmd.moveTarget.y + i);
                 }
