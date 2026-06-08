@@ -13,6 +13,14 @@ public class Missile : MonoBehaviour
     public GameObject explosionPrefab;
     public float explosionLifetime = 2f;
 
+    [Header("사운드 설정")]
+    public SoundID launchSound = SoundID.Missile_Launch;
+    public SoundID hitSound = SoundID.Missile_Hit;
+
+    [Tooltip("발사/피격음 피치를 랜덤으로 살짝 변경해 반복감을 줄입니다.")]
+    [Range(0f, 0.3f)]
+    public float pitchVariance = 0.08f;
+
     [HideInInspector] public int damage;
     [HideInInspector] public int attackCount;
     [HideInInspector] public string targetEnemyName;
@@ -25,6 +33,9 @@ public class Missile : MonoBehaviour
         _endPos = end;
         _elapsed = 0f;
         _launched = true;
+
+        // 발사 사운드: 미사일 위치에서 3D로 재생
+        SoundManager.Instance?.PlaySFXAtPoint(launchSound, start);
     }
 
     void Update()
@@ -62,6 +73,9 @@ public class Missile : MonoBehaviour
             GameObject fx = Instantiate(explosionPrefab, _endPos, Quaternion.identity);
             Destroy(fx, explosionLifetime);
         }
+
+        // 피격 사운드: 착탄 위치에서 3D로 재생
+        SoundManager.Instance?.PlaySFXAtPoint(hitSound, _endPos);
 
         OnArrived?.Invoke(this);
         Destroy(gameObject);

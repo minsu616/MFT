@@ -771,6 +771,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   myFleet: []
   enemyFleet: []
+  isVictory: 0
 --- !u!4 &1374612616
 Transform:
   m_ObjectHideFlags: 0
