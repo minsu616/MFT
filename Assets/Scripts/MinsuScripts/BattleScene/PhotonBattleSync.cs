@@ -241,7 +241,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         Transform centerCell = enemyShip.transform.GetChild(centerIndex);
         int startX = Mathf.RoundToInt(centerCell.position.x);
         int startZ = Mathf.RoundToInt(centerCell.position.z);
-        int endX = targetX + centerIndex;
+        int endX = targetX;
         int endZ = targetZ;
 
         int stepX = endX > startX ? 1 : -1;
@@ -284,7 +284,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             yield return wait;
         }
 
-        enemyShip.transform.position = new Vector3(targetX, 0.3f, targetZ);
+        enemyShip.transform.position = new Vector3(targetX - centerIndex, 0.3f, targetZ);
         for (int i = 0; i < enemyShip.transform.childCount; i++)
         {
             Transform cell = enemyShip.transform.GetChild(i);
