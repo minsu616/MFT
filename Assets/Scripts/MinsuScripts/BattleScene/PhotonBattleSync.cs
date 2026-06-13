@@ -290,9 +290,9 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             Transform cell = enemyShip.transform.GetChild(i);
             if (cell.name == "HPBar") continue;
             if (isHorizontal)
-                cell.position = new Vector3(targetX + i, 0.3f, targetZ);
+                cell.position = new Vector3(targetX - centerIndex + i, 0.3f, targetZ);
             else
-                cell.position = new Vector3(targetX, 0.3f, targetZ + i);
+                cell.position = new Vector3(targetX - centerIndex, 0.3f, targetZ + i);
         }
 
         Debug.Log($"{enemyShip.name} 이동 완료! → ({targetX},{targetZ})");
