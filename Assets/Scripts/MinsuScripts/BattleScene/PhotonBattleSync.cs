@@ -244,7 +244,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
         int endX = targetX;
         int endZ = targetZ;
 
-        int stepX = endX > startX ? 1 : -1;
+        int stepX = (endX > startX) ? 1 : (endX < startX) ? -1 : 0;
         for (int x = startX; x != endX; x += stepX)
         {
             enemyShip.transform.position += new Vector3(stepX, 0, 0);
@@ -264,7 +264,7 @@ public class PhotonBattleSync : MonoBehaviourPunCallbacks, IOnEventCallback
             yield return wait;
         }
 
-        int stepZ = endZ > startZ ? 1 : -1;
+        int stepZ = (endZ > startZ) ? 1 : (endZ < startZ) ? -1 : 0;
         for (int z = startZ; z != endZ; z += stepZ)
         {
             enemyShip.transform.position += new Vector3(0, 0, stepZ);
